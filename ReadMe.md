@@ -64,8 +64,8 @@ Before running this application, ensure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
-cd <project-directory>
+git clone https://github.com/Sudhu2004/CommunityApplication.git
+cd CommunityApplication
 ```
 
 ### 2. Database Setup
