@@ -16,12 +16,12 @@ spring:
     database: postgresql
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
-  # Mail Configuration (Mailtrap)
+  # Mail Configuration
   mail:
     host: smtp.gmail.com
     port: 587
-    username: sudhrshan18@gmail.com
-    password: cstzzwvoxzyghcsg
+    username: your@gmail.com
+    password: xxxxxxxxxxxxxxxx // get from google passwords
     protocol: smtp
     properties:
       mail:
@@ -47,4 +47,4 @@ app:
     from: sudhrshan18@gmail.com
   mail:
     mailtrap:
-      token: bc4156e080801c12749c199104a8d755
+      token: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx // get from mail trap
