@@ -44,6 +44,9 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "is_active")
+    private Boolean isActive;
+
     // Relationships
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<CommunityMembership> communityMemberships = new HashSet<>();
@@ -59,6 +62,9 @@ public class User {
 
     @OneToMany(mappedBy = "createdBy")
     private Set<Event> eventsCreated = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<AccountActivation> activationCodes;
 
     public User() {
     }
@@ -134,5 +140,13 @@ public class User {
 
     public void setGroupMemberships(Set<GroupMembership> groupMemberships) {
         this.groupMemberships = groupMemberships;
+    }
+
+    public Boolean getActive() {
+        return isActive;
+    }
+
+    public void setActive(Boolean active) {
+        isActive = active;
     }
 }
