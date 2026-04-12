@@ -1,5 +1,5 @@
 target/
-src/main/resources/applicationd-dev.yaml
+src/main/resources/application-dev.yaml
 
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
