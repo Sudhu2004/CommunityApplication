@@ -1,4 +1,6 @@
 target/
+src/main/resources/applicationd-dev.yaml
+
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -36,5 +38,3 @@ build/
 
 ### Mac OS ###
 .DS_Store
-
-src/main/resources/application.yaml

@@ -1,13 +1,16 @@
 spring:
+  profiles:
+    active: dev
+
   datasource:
-    url: jdbc:postgresql://dpg-d7afu9oule4c739f80l0-a.oregon-postgres.render.com:5432/community_app_backend
-    username: sreddy  # Your Render username
-    password: G5K8NFqZz4Yp7Yw6iQ5M7cg2AQqGvTbw  # Your Render password
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${DDL_AUTO:update}
     show-sql: true
     properties:
       hibernate:
@@ -16,10 +19,10 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: sudhrshan18@gmail.com
-    password: cstzzwvoxzyghcsg
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     protocol: smtp
     properties:
       mail:
@@ -37,9 +40,12 @@ spring:
     encoding: UTF-8
     cache: false
 
+server:
+  port: ${PORT:8080}
+
 app:
   email:
-    from: sudhrshan18@gmail.com
+    from: ${APP_EMAIL_FROM}
   mail:
     mailtrap:
-      token: bc4156e080801c12749c199104a8d755
+      token: ${MAILTRAP_TOKEN}
