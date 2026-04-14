@@ -48,7 +48,10 @@ public class AuthenticationService {
         if(request.getEmail() != null) {
             boolean existsByEmail = userRepository.existsByEmail(request.getEmail());
             if(existsByEmail) {
-                throw new RuntimeException("User Email: " + request.getEmail() + " exists");
+                AuthRequest authRequest = new AuthRequest();
+                authRequest.setEmail(request.getEmail());
+                authRequest.setPassword(request.getPassword());
+                return authenticate(authRequest);
             }
         }
 
