@@ -3,6 +3,7 @@ package app.RESTController;
 import app.DTO.Auth.AuthRequest;
 import app.DTO.Auth.AuthResponse;
 import app.DTO.Auth.SignUpRequest;
+import app.DTO.Auth.SignUpResponse;
 import app.Service.AuthenticationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +17,7 @@ public class AuthorizationController {
     private AuthenticationService authenticationService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(
+    public ResponseEntity<SignUpResponse> register(
             @RequestBody SignUpRequest request
             ) {
         return ResponseEntity.ok(authenticationService.register(request));
