@@ -38,7 +38,7 @@ public class UserController {
     }
 
     /**
-     * GET /api/users
+     * GET /api/user/all
      * Get all users
      */
     @GetMapping("/all")
