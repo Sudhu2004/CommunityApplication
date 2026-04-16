@@ -4,11 +4,14 @@ import app.Config.JwtService;
 import app.DTO.Auth.AuthRequest;
 import app.DTO.Auth.AuthResponse;
 import app.DTO.Auth.SignUpRequest;
+import app.DTO.Auth.SignUpResponse;
 import app.Database.AccountActivation;
 import app.Database.User;
+import app.Exception.APIException;
 import app.Repository.AccountActivationRepository;
 import app.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,14 +47,15 @@ public class AuthenticationService {
     private static final int CODE_LENGTH = 6;
     private static final Random RANDOM = new SecureRandom();
 
-    public AuthResponse register(SignUpRequest request) {
+    public SignUpResponse register(SignUpRequest request) {
         if(request.getEmail() != null) {
             boolean existsByEmail = userRepository.existsByEmail(request.getEmail());
             if(existsByEmail) {
-                AuthRequest authRequest = new AuthRequest();
-                authRequest.setEmail(request.getEmail());
-                authRequest.setPassword(request.getPassword());
-                return authenticate(authRequest);
+                new SignUpResponse(
+                        request.getEmail(),
+                        false,
+                        "Account already exists, Sign Up"
+                );
             }
         }
 
@@ -67,19 +71,35 @@ public class AuthenticationService {
         userRepository.save(user);
 
         // Send activation code
-        sendActivationCode(user);
+        Boolean codeSent = sendActivationCode(user);
 
-        String jwtToken = jwtService.generateToken(user.getEmail());
-
-        return new AuthResponse(
-                jwtToken,
-                user.getEmail()
+        return new SignUpResponse(
+                user.getEmail(),
+                codeSent,
+                codeSent ? "Activation code sent successfully" : "Failed to send activation code"
         );
     }
 
-    public void sendActivationCode(User user) {
+    public Boolean sendActivationCode(User user) {
         // Generate activation code
         String activationCode = generateActivationCode();
+
+        try {
+            // Send email with Thymeleaf template
+            Context context = new Context();
+            context.setVariable("userName", user.getName());
+            context.setVariable("activationCode", activationCode);
+
+            emailService.sendEmailWithTemplate(
+                    user.getEmail(),
+                    "Activate Your Account",
+                    "activation-email",
+                    context
+            );
+        } catch (Exception e) {
+            System.err.println("Error Sending Email: " + e.getMessage());
+            return false;
+        }
 
         // Create and save AccountActivation entity
         AccountActivation activation = new AccountActivation();
@@ -87,17 +107,7 @@ public class AuthenticationService {
         activation.setUser(user);
         accountActivationRepository.save(activation);
 
-        // Send email with Thymeleaf template
-        Context context = new Context();
-        context.setVariable("userName", user.getName());
-        context.setVariable("activationCode", activationCode);
-
-        emailService.sendEmailWithTemplate(
-                user.getEmail(),
-                "Activate Your Account",
-                "activation-email",
-                context
-        );
+        return true;
     }
 
     public String generateActivationCode() {
@@ -108,20 +118,32 @@ public class AuthenticationService {
         return code.toString();
     }
 
-    public boolean verifyActivationCode(String email, String code) {
+    public void verifyActivationCode(String email, String code) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         AccountActivation activation = accountActivationRepository
                 .findByUserAndActivationCodeAndActivatedAtIsNull(user, code)
-                .orElseThrow(() -> new RuntimeException("Invalid activation code"));
+                .orElseThrow(() -> new APIException(
+                        "Invalid Activation Code",
+                        "ActivationService.verifyActivationCode",
+                        HttpStatus.BAD_REQUEST
+                ));
 
         if (activation.isExpired()) {
-            throw new RuntimeException("Activation code has expired");
+            throw new APIException(
+                    "Activation code expired",
+                    "ActivationService.verifyActivationCode",
+                    HttpStatus.BAD_REQUEST
+            );
         }
 
         if (activation.isActivated()) {
-            throw new RuntimeException("Activation code already used");
+            throw new APIException(
+                    "Activation code already used",
+                    "ActivationService.verifyActivationCode",
+                    HttpStatus.BAD_REQUEST
+            );
         }
 
         // Mark as activated
@@ -131,11 +153,9 @@ public class AuthenticationService {
         // Activate user account
         user.setActive(true);
         userRepository.save(user);
-
-        return true;
     }
 
-    public void resendActivationCode(String email) {
+    public SignUpResponse resendActivationCode(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -143,7 +163,14 @@ public class AuthenticationService {
             throw new RuntimeException("Account is already activated");
         }
 
-        sendActivationCode(user);
+        // Send activation code
+        Boolean codeSent = sendActivationCode(user);
+
+        return new SignUpResponse(
+                user.getEmail(),
+                codeSent,
+                codeSent ? "Activation code sent successfully" : "Failed to send activation code"
+        );
     }
 
     public AuthResponse authenticate(AuthRequest authRequest) {
