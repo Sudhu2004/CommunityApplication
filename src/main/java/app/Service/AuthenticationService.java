@@ -51,10 +51,10 @@ public class AuthenticationService {
         if(request.getEmail() != null) {
             boolean existsByEmail = userRepository.existsByEmail(request.getEmail());
             if(existsByEmail) {
-                new SignUpResponse(
-                        request.getEmail(),
-                        false,
-                        "Account already exists, Sign Up"
+                throw new APIException(
+                        "Account already exists, Sign Up",
+                        "AuthenticationService.register",
+                        HttpStatus.BAD_REQUEST
                 );
             }
         }
@@ -120,7 +120,11 @@ public class AuthenticationService {
 
     public void verifyActivationCode(String email, String code) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new APIException(
+                        "User Not Found",
+                        "ActivationService.verifyActivationCode",
+                        HttpStatus.BAD_REQUEST
+                ));
 
         AccountActivation activation = accountActivationRepository
                 .findByUserAndActivationCodeAndActivatedAtIsNull(user, code)
@@ -157,10 +161,18 @@ public class AuthenticationService {
 
     public SignUpResponse resendActivationCode(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new APIException(
+                        "User not Found",
+                        "ActivationService.resentActivationCode",
+                        HttpStatus.BAD_REQUEST
+                ));
 
         if (user.getActive()) {
-            throw new RuntimeException("Account is already activated");
+            throw new APIException(
+                    "Account is already activated",
+                    "ActivationService.resendActivationCode",
+                    HttpStatus.BAD_REQUEST
+            );
         }
 
         // Send activation code
@@ -180,10 +192,18 @@ public class AuthenticationService {
         try {
             // Check if user is activated
             User user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new APIException(
+                            "User not Found",
+                            "ActivationService.authenticate",
+                            HttpStatus.BAD_REQUEST
+                    ));
 
             if (!user.getActive()) {
-                throw new RuntimeException("Account not activated. Please check your email for activation code.");
+                throw new APIException(
+                        "Account not activated. Please check your email for activation code.",
+                        "ActivationService.authenticate",
+                        HttpStatus.BAD_REQUEST
+                );
             }
 
             System.out.println("Authentication manager");
@@ -200,7 +220,11 @@ public class AuthenticationService {
             return new AuthResponse(jwtToken, email);
         } catch (Exception e) {
             System.err.println("Authentication failed: " + e.getMessage());
-            throw new RuntimeException("Authentication failed: " + e.getMessage());
+            throw new APIException(
+                    "Authentication failed: " + e.getMessage(),
+                    "AuthenticationService.authenticate",
+                    HttpStatus.BAD_REQUEST
+            );
         }
     }
 }
