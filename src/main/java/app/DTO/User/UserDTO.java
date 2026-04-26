@@ -12,11 +12,13 @@ public class UserDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean isActive;
+    private String userCode;
+
     // Constructors
     public UserDTO() {}
 
     public UserDTO(UUID id, String email, String name, String phone,
-                   String profilePhotoUrl, LocalDateTime createdAt, LocalDateTime updatedAt, Boolean isActive) {
+                   String profilePhotoUrl, LocalDateTime createdAt, LocalDateTime updatedAt, Boolean isActive, String userCode) {
         this.id = id;
         this.email = email;
         this.name = name;
@@ -25,6 +27,7 @@ public class UserDTO {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.isActive = isActive;
+        this.userCode = userCode;
     }
 
     // Getters and Setters
@@ -55,5 +58,13 @@ public class UserDTO {
 
     public void setActive(Boolean active) {
         isActive = active;
+    }
+
+    public String getUserCode() {
+        return userCode;
+    }
+
+    public void setUserCode(String userCode) {
+        this.userCode = userCode;
     }
 }

@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -23,10 +24,37 @@ public class UserService {
     @Autowired
     private UserMapper userMapper;
 
+    private final String BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    private final int DEFAULT_LENGTH = 8;
+
+    private final SecureRandom random = new SecureRandom();
+
+    public String generate() {
+        return generate(DEFAULT_LENGTH);
+    }
+
+    private String generate(int length) {
+        StringBuilder sb = new StringBuilder(length);
+
+        for (int i = 0; i < length; i++) {
+            int index = random.nextInt(BASE62.length());
+            sb.append(BASE62.charAt(index));
+        }
+
+        return sb.toString();
+    }
+
     public Boolean registerUser(User user) {
         if(userRepository.existsByEmail(user.getEmail())) {
             return Boolean.FALSE;
         }
+
+        String code;
+        do {
+            code = generate();
+        } while (userRepository.existsByUserCode(code));
+
+        user.setUserCode(code);
 
         userRepository.save(user);
         return true;
@@ -40,9 +68,9 @@ public class UserService {
         return null;
     }
 
-    public UserDTO getUserById(UUID userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+    public UserDTO getUserByShortId(String shortCode) {
+        User user = userRepository.findByUserCode(shortCode)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + shortCode));
 
         return userMapper.toDTO(user);
     }
@@ -62,9 +90,9 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
-    public UserDTO updateUser(UUID userId, @Valid UpdateUserRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+    public UserDTO updateUser(String shortCode, @Valid UpdateUserRequest request) {
+        User user = userRepository.findByUserCode(shortCode)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + shortCode));
 
         // Update fields if provided
         if (request.getName() != null && !request.getName().isEmpty()) {
@@ -90,14 +118,18 @@ public class UserService {
      * Delete a user
      */
     @Transactional
-    public void deleteUser(UUID userId) {
+    public void deleteUser(String shortCode) {
         // Check if user exists
-        if (!userRepository.existsById(userId)) {
-            throw new RuntimeException("User not found with id: " + userId);
+        if (!userRepository.existsByUserCode(shortCode)) {
+            throw new RuntimeException("User not found with id: " + shortCode);
         }
 
+        // get uuid
+        User user = userRepository.findByUserCode(shortCode)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + shortCode));
+
         // Delete the user
-        userRepository.deleteById(userId);
+        userRepository.deleteById(user.getId());
     }
 
     /**
@@ -106,4 +138,5 @@ public class UserService {
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
     }
+
 }

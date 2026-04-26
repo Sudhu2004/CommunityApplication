@@ -20,6 +20,7 @@ public class UserMapper {
         dto.setCreatedAt(user.getCreatedAt());
         dto.setUpdatedAt(user.getUpdatedAt());
         dto.setActive(user.getActive());
+        dto.setUserCode(user.getUserCode());
         return dto;
     }
 
@@ -35,6 +36,7 @@ public class UserMapper {
         user.setPhone(dto.getPhone());
         user.setProfilePhotoUrl(dto.getProfilePhotoUrl());
         user.setActive(dto.getActive());
+        user.setUserCode(dto.getUserCode());
         return user;
     }
 }

@@ -2,6 +2,7 @@ package app.RESTController;
 
 import app.DTO.User.UpdateUserRequest;
 import app.DTO.User.UserDTO;
+import app.Database.User;
 import app.Service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,12 +19,13 @@ public class UserController {
     private UserService userService;
 
     /**
-     * GET /api/user/{userId}
+     * GET /api/user/{userCode}
      * Get a user by ID
      */
-    @GetMapping("/{userId}")
-    public ResponseEntity<UserDTO> getUserById(@PathVariable UUID userId) {
-        UserDTO user = userService.getUserById(userId);
+    @GetMapping("/{userCode}")
+    public ResponseEntity<UserDTO> getUserbyCode(@PathVariable String userCode) {
+        UserDTO user = userService.getUserByShortId(userCode);
+
         return ResponseEntity.ok(user);
     }
 
@@ -48,24 +50,24 @@ public class UserController {
     }
 
     /**
-     * PUT /api/user/{userId}
+     * PUT /api/user/{userCode}
      * Update an existing user
      */
-    @PutMapping("/{userId}")
+    @PutMapping("/{userCode}")
     public ResponseEntity<UserDTO> updateUser(
-            @PathVariable UUID userId,
+            @PathVariable String userCode,
             @Valid @RequestBody UpdateUserRequest request) {
-        UserDTO updatedUser = userService.updateUser(userId, request);
+        UserDTO updatedUser = userService.updateUser(userCode, request);
         return ResponseEntity.ok(updatedUser);
     }
 
     /**
-     * DELETE /api/user/{userId}
+     * DELETE /api/user/{userCode}
      * Delete a user
      */
-    @DeleteMapping("/{userId}")
-    public ResponseEntity<Void> deleteUser(@PathVariable UUID userId) {
-        userService.deleteUser(userId);
+    @DeleteMapping("/{userCode}")
+    public ResponseEntity<Void> deleteUser(@PathVariable String userCode) {
+        userService.deleteUser(userCode);
         return ResponseEntity.noContent().build();
     }
 
@@ -77,5 +79,20 @@ public class UserController {
     public ResponseEntity<Boolean> checkEmailExists(@PathVariable String email) {
         boolean exists = userService.existsByEmail(email);
         return ResponseEntity.ok(exists);
+    }
+
+    /**
+     * GET /api/user/userCodeByEmail/{email}
+     * Check if a user exists by email
+     */
+
+    @GetMapping("/userCodeByEmail")
+    public ResponseEntity<String> getShortCodeByEmail(
+            @RequestParam String email
+    ) {
+
+        UserDTO user = userService.getUserByEmail(email);
+
+        return ResponseEntity.ok(user.getUserCode());
     }
 }

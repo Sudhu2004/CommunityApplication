@@ -43,6 +43,9 @@ public class AuthenticationService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private UserService userService;
+
     private static final String CHARACTERS = "0123456789";
     private static final int CODE_LENGTH = 6;
     private static final Random RANDOM = new SecureRandom();
@@ -64,6 +67,10 @@ public class AuthenticationService {
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setActive(false);
+        user.setUserCode(
+                userService.generate()
+        );
+
         if(request.getPhone() != null) {
             user.setPhone(request.getPhone());
         }
