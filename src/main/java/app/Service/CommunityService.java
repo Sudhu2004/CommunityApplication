@@ -5,10 +5,7 @@ import app.DTO.Community.CommunityMembershipDTO;
 import app.DTO.Community.CreateCommunityRequest;
 import app.DTO.Community.UpdateCommunityRequest;
 import app.DTO.Group.AddMemberRequest;
-import app.Database.Community;
-import app.Database.CommunityMembership;
-import app.Database.MemberRole;
-import app.Database.User;
+import app.Database.*;
 import app.DTO.Community.CommunityMapper;
 import app.Repository.CommunityMembershipRepository;
 import app.Repository.CommunityRepository;
@@ -36,14 +33,19 @@ public class CommunityService {
     @Autowired
     private CommunityMapper communityMapper;
 
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private GlobalShortCodeService globalShortCodeService;
+
     /**
      * Create a new community
      */
     @Transactional
-    public CommunityDTO createCommunity(UUID creatorId, CreateCommunityRequest request) {
+    public CommunityDTO createCommunity(String userCode, CreateCommunityRequest request) {
         // Find the creator
-        User creator = userRepository.findById(creatorId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + creatorId));
+        User creator = userService.getUserByShortCode(userCode);
 
         // Create community
         Community community = new Community();
@@ -53,6 +55,7 @@ public class CommunityService {
 
         // Save community
         Community savedCommunity = communityRepository.save(community);
+        globalShortCodeService.generateAndReserve(DatabaseType.COMMUNITY, community.getId());
 
         // Automatically add creator as OWNER
         CommunityMembership creatorMembership = new CommunityMembership();

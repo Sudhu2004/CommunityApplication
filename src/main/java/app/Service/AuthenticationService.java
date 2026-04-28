@@ -5,7 +5,9 @@ import app.DTO.Auth.AuthRequest;
 import app.DTO.Auth.AuthResponse;
 import app.DTO.Auth.SignUpRequest;
 import app.DTO.Auth.SignUpResponse;
+import app.DTO.User.UserDTO;
 import app.Database.AccountActivation;
+import app.Database.DatabaseType;
 import app.Database.User;
 import app.Exception.APIException;
 import app.Repository.AccountActivationRepository;
@@ -46,6 +48,9 @@ public class AuthenticationService {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private GlobalShortCodeService globalShortCodeService;
+
     private static final String CHARACTERS = "0123456789";
     private static final int CODE_LENGTH = 6;
     private static final Random RANDOM = new SecureRandom();
@@ -67,15 +72,13 @@ public class AuthenticationService {
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setActive(false);
-        user.setUserCode(
-                userService.generate()
-        );
 
         if(request.getPhone() != null) {
             user.setPhone(request.getPhone());
         }
 
         userRepository.save(user);
+        globalShortCodeService.generateAndReserve(DatabaseType.USER, user.getId());
 
         // Send activation code
         Boolean codeSent = sendActivationCode(user);

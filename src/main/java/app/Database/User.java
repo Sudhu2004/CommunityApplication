@@ -66,9 +66,6 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<AccountActivation> activationCodes;
 
-    @Column(unique = true, nullable = false)
-    private String userCode;
-
     public User() {
     }
 
@@ -151,13 +148,5 @@ public class User {
 
     public void setActive(Boolean active) {
         isActive = active;
-    }
-
-    public String getUserCode() {
-        return userCode;
-    }
-
-    public void setUserCode(String userCode) {
-        this.userCode = userCode;
     }
 }

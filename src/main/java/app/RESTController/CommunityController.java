@@ -30,8 +30,8 @@ public class CommunityController {
     @PostMapping
     public ResponseEntity<CommunityDTO> createCommunity(
             @Valid @RequestBody CreateCommunityRequest request,
-            @RequestHeader("User-Id") UUID userId) {
-        CommunityDTO community = communityService.createCommunity(userId, request);
+            @RequestHeader("userCode") String userCode) {
+        CommunityDTO community = communityService.createCommunity(userCode, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(community);
     }
 

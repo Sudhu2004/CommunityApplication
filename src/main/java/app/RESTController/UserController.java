@@ -2,6 +2,7 @@ package app.RESTController;
 
 import app.DTO.User.UpdateUserRequest;
 import app.DTO.User.UserDTO;
+import app.DTO.User.UserMapper;
 import app.Database.User;
 import app.Service.UserService;
 import jakarta.validation.Valid;
@@ -9,8 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/user")
@@ -18,15 +20,18 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private UserMapper userMapper;
+
     /**
      * GET /api/user/{userCode}
      * Get a user by ID
      */
     @GetMapping("/{userCode}")
     public ResponseEntity<UserDTO> getUserbyCode(@PathVariable String userCode) {
-        UserDTO user = userService.getUserByShortId(userCode);
+        User user = userService.getUserByShortCode(userCode);
 
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(userMapper.toDTO(user));
     }
 
     /**
@@ -85,14 +90,16 @@ public class UserController {
      * GET /api/user/userCodeByEmail/{email}
      * Check if a user exists by email
      */
-
     @GetMapping("/userCodeByEmail")
-    public ResponseEntity<String> getShortCodeByEmail(
+    public ResponseEntity<Map<String, Object>> getShortCodeByEmail(
             @RequestParam String email
     ) {
+        String shortCode = userService.getShortCodeByEmail(email);
 
-        UserDTO user = userService.getUserByEmail(email);
+        Map<String, Object> map = new HashMap<>();
+        map.put("shortCode", shortCode);
+        map.put("exists", shortCode != null);
 
-        return ResponseEntity.ok(user.getUserCode());
+        return ResponseEntity.ok(map);
     }
 }

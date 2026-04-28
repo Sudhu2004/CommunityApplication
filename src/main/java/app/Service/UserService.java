@@ -2,15 +2,15 @@ package app.Service;
 
 import app.DTO.User.UpdateUserRequest;
 import app.DTO.User.UserDTO;
-import app.Database.User;
 import app.DTO.User.UserMapper;
+import app.Database.DatabaseType;
+import app.Database.User;
 import app.Repository.UserRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -24,39 +24,19 @@ public class UserService {
     @Autowired
     private UserMapper userMapper;
 
-    private final String BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    private final int DEFAULT_LENGTH = 8;
-
-    private final SecureRandom random = new SecureRandom();
-
-    public String generate() {
-        return generate(DEFAULT_LENGTH);
-    }
-
-    private String generate(int length) {
-        StringBuilder sb = new StringBuilder(length);
-
-        for (int i = 0; i < length; i++) {
-            int index = random.nextInt(BASE62.length());
-            sb.append(BASE62.charAt(index));
-        }
-
-        return sb.toString();
-    }
+    @Autowired
+    private GlobalShortCodeService globalShortCodeService;
 
     public Boolean registerUser(User user) {
         if(userRepository.existsByEmail(user.getEmail())) {
             return Boolean.FALSE;
         }
 
-        String code;
-        do {
-            code = generate();
-        } while (userRepository.existsByUserCode(code));
-
-        user.setUserCode(code);
-
         userRepository.save(user);
+
+        UUID userUUID = user.getId();
+        globalShortCodeService.generateAndReserve(DatabaseType.USER, userUUID);
+
         return true;
     }
 
@@ -68,11 +48,9 @@ public class UserService {
         return null;
     }
 
-    public UserDTO getUserByShortId(String shortCode) {
-        User user = userRepository.findByUserCode(shortCode)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + shortCode));
-
-        return userMapper.toDTO(user);
+    public User getUserByUUID(UUID uuid) {
+        return userRepository.findById(uuid)
+                .orElseThrow(() -> new RuntimeException("User does not exist"));
     }
 
     public UserDTO getUserByEmail(String email) {
@@ -82,6 +60,19 @@ public class UserService {
         return userMapper.toDTO(user);
     }
 
+    public String getUserShortCodeByEmail(String email) {
+        UserDTO userDTO = getUserByEmail(email);
+        return globalShortCodeService.getShortCode(DatabaseType.USER, userDTO.getId());
+    }
+
+    public User getUserByShortCode(String code) {
+        UUID userUUID = globalShortCodeService.getUUIDfromShortCode(
+                DatabaseType.USER,
+                code
+        );
+
+        return getUserByUUID(userUUID);
+    }
 
     public List<UserDTO> getAllUsers() {
         List<User> users = userRepository.findAll();
@@ -91,8 +82,7 @@ public class UserService {
     }
 
     public UserDTO updateUser(String shortCode, @Valid UpdateUserRequest request) {
-        User user = userRepository.findByUserCode(shortCode)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + shortCode));
+        User user = getUserByShortCode(shortCode);
 
         // Update fields if provided
         if (request.getName() != null && !request.getName().isEmpty()) {
@@ -119,14 +109,7 @@ public class UserService {
      */
     @Transactional
     public void deleteUser(String shortCode) {
-        // Check if user exists
-        if (!userRepository.existsByUserCode(shortCode)) {
-            throw new RuntimeException("User not found with id: " + shortCode);
-        }
-
-        // get uuid
-        User user = userRepository.findByUserCode(shortCode)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + shortCode));
+        User user = getUserByShortCode(shortCode);
 
         // Delete the user
         userRepository.deleteById(user.getId());
@@ -139,4 +122,10 @@ public class UserService {
         return userRepository.existsByEmail(email);
     }
 
+    public String getShortCodeByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User does not exist"));
+
+        return globalShortCodeService.getShortCode(DatabaseType.USER, user.getId());
+    }
 }
