@@ -1,26 +1,31 @@
 package app.DTO.Community;
 import app.DTO.User.UserDTO;
+import app.Database.DatabaseType;
+import app.Service.GlobalShortCodeService;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public class CommunityDTO {
-    private UUID id;
     private String name;
     private String description;
+    private Boolean onlyAdminsCanChat;
     private UserDTO createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private int memberCount;
     private int groupCount;
+    private String communityCode;
+
+    @Autowired
+    private GlobalShortCodeService globalShortCodeService;
 
     // Constructors
     public CommunityDTO() {}
 
-    public CommunityDTO(UUID id, String name, String description, UserDTO createdBy,
+    public CommunityDTO(String name, String description, UserDTO createdBy,
                         LocalDateTime createdAt, LocalDateTime updatedAt,
-                        int memberCount, int groupCount) {
-        this.id = id;
+                        int memberCount, int groupCount, String communityCode) {
         this.name = name;
         this.description = description;
         this.createdBy = createdBy;
@@ -28,17 +33,18 @@ public class CommunityDTO {
         this.updatedAt = updatedAt;
         this.memberCount = memberCount;
         this.groupCount = groupCount;
+        this.communityCode = communityCode;
     }
 
     // Getters and Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public Boolean getOnlyAdminsCanChat() { return onlyAdminsCanChat; }
+    public void setOnlyAdminsCanChat(Boolean onlyAdminsCanChat) { this.onlyAdminsCanChat = onlyAdminsCanChat; }
 
     public UserDTO getCreatedBy() { return createdBy; }
     public void setCreatedBy(UserDTO createdBy) { this.createdBy = createdBy; }
@@ -54,4 +60,12 @@ public class CommunityDTO {
 
     public int getGroupCount() { return groupCount; }
     public void setGroupCount(int groupCount) { this.groupCount = groupCount; }
+
+    public String getCommunityCode() {
+        return communityCode;
+    }
+
+    public void setCommunityCode(String communityCode) {
+        this.communityCode = communityCode;
+    }
 }

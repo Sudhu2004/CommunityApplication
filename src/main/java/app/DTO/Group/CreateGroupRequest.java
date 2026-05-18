@@ -3,12 +3,11 @@ package app.DTO.Group;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.util.UUID;
 
 public class CreateGroupRequest {
 
-    @NotNull(message = "Community ID is required")
-    private UUID communityId;
+    @NotNull(message = "Community code is required")
+    private String communityCode;
 
     @NotBlank(message = "Group name is required")
     @Size(min = 2, max = 255, message = "Name must be between 2 and 255 characters")
@@ -20,15 +19,15 @@ public class CreateGroupRequest {
     // Constructors
     public CreateGroupRequest() {}
 
-    public CreateGroupRequest(UUID communityId, String name, String description) {
-        this.communityId = communityId;
+    public CreateGroupRequest(String communityCode, String name, String description) {
+        this.communityCode = communityCode;
         this.name = name;
         this.description = description;
     }
 
     // Getters and Setters
-    public UUID getCommunityId() { return communityId; }
-    public void setCommunityId(UUID communityId) { this.communityId = communityId; }
+    public String getCommunityCode() { return communityCode; }
+    public void setCommunityCode(String communityCode) { this.communityCode = communityCode; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

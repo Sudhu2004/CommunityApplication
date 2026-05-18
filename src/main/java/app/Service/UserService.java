@@ -61,8 +61,9 @@ public class UserService {
     }
 
     public String getUserShortCodeByEmail(String email) {
-        UserDTO userDTO = getUserByEmail(email);
-        return globalShortCodeService.getShortCode(DatabaseType.USER, userDTO.getId());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        return globalShortCodeService.getShortCode(DatabaseType.USER, user.getId());
     }
 
     public User getUserByShortCode(String code) {

@@ -10,8 +10,8 @@ import java.util.UUID;
 @Table(name = "account_activations")
 public class AccountActivation {
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue
+    @org.hibernate.annotations.UuidGenerator
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 

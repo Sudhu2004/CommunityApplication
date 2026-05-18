@@ -1,38 +1,34 @@
 package app.Database;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.GenericGenerator;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "global_short_codes")
-public class GlobalShortCode {
-
+public class Activity {
     @Id
     @GeneratedValue
     @org.hibernate.annotations.UuidGenerator
     private UUID id;
 
-    @Column(nullable = false, unique = true)
-    private String code;
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String message;
 
-    // Optional: track usage context
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private DatabaseType type; // e.g. "COMMUNITY", "EVENT", etc.
+    @Column(nullable = false, length = 20)
+    private DatabaseType type;
 
-    private UUID referenceId; // ID of the entity using it
+    @Column(name = "reference_id", nullable = false)
+    private UUID referenceId;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
 
-    public GlobalShortCode() {}
-
-    public GlobalShortCode(String code, DatabaseType type, UUID referenceId) {
-        this.code = code;
-        this.type = type;
-        this.referenceId = referenceId;
+    public Activity() {
     }
 
     public UUID getId() {
@@ -43,12 +39,12 @@ public class GlobalShortCode {
         this.id = id;
     }
 
-    public String getCode() {
-        return code;
+    public String getMessage() {
+        return message;
     }
 
-    public void setCode(String code) {
-        this.code = code;
+    public void setMessage(String message) {
+        this.message = message;
     }
 
     public DatabaseType getType() {

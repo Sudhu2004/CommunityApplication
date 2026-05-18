@@ -32,10 +32,12 @@ public class ActivationController {
 
         // If no exception → success
         String token = jwtService.generateToken(request.getEmail());
+        String userCode = authenticationService.getUserCodeByEmail(request.getEmail());
 
         AuthResponse response = new AuthResponse(
                 token,
-                request.getEmail()
+                request.getEmail(),
+                userCode
         );
 
         return ResponseEntity.ok(response);

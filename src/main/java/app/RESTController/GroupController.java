@@ -11,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/groups")
@@ -27,154 +26,221 @@ public class GroupController {
     @PostMapping
     public ResponseEntity<GroupDTO> createGroup(
             @Valid @RequestBody CreateGroupRequest request,
-            @RequestHeader("User-Id") UUID userId) {
-        GroupDTO group = groupService.createGroup(userId, request);
+            @RequestHeader("userCode") String userCode) {
+        GroupDTO group = groupService.createGroup(userCode, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(group);
     }
 
     /**
-     * GET /api/groups/{groupId}
+     * GET /api/groups/{groupCode}
      * Get a group by ID
      */
-    @GetMapping("/{groupId}")
-    public ResponseEntity<GroupDTO> getGroup(@PathVariable UUID groupId) {
-        GroupDTO group = groupService.getGroupById(groupId);
+    @GetMapping("/{groupCode}")
+    public ResponseEntity<GroupDTO> getGroup(
+            @PathVariable String groupCode,
+            @RequestHeader("userCode") String userCode) {
+        GroupDTO group = groupService.getGroupByCode(groupCode, userCode);
         return ResponseEntity.ok(group);
     }
 
     /**
-     * GET /api/groups/community/{communityId}
+     * GET /api/groups/community/{communityCode}
      * Get all groups in a community
      */
-    @GetMapping("/community/{communityId}")
+    @GetMapping("/community/{communityCode}")
     public ResponseEntity<List<GroupDTO>> getGroupsByCommunity(
-            @PathVariable UUID communityId) {
-        List<GroupDTO> groups = groupService.getGroupsByCommunity(communityId);
+            @PathVariable String communityCode,
+            @RequestHeader("userCode") String userCode) {
+        List<GroupDTO> groups = groupService.getGroupsByCommunity(communityCode, userCode);
         return ResponseEntity.ok(groups);
     }
 
     /**
-     * GET /api/groups/community/{communityId}/search?q={searchTerm}
+     * GET /api/groups/community/{communityCode}/search?q={searchTerm}
      * Search groups in a community
      */
-    @GetMapping("/community/{communityId}/search")
+    @GetMapping("/community/{communityCode}/search")
     public ResponseEntity<List<GroupDTO>> searchGroupsInCommunity(
-            @PathVariable UUID communityId,
-            @RequestParam("q") String searchTerm) {
-        List<GroupDTO> groups = groupService.searchGroupsInCommunity(communityId, searchTerm);
+            @PathVariable String communityCode,
+            @RequestParam("q") String searchTerm,
+            @RequestHeader("userCode") String userCode) {
+        List<GroupDTO> groups = groupService.searchGroupsInCommunity(communityCode, searchTerm, userCode);
         return ResponseEntity.ok(groups);
     }
 
     /**
-     * GET /api/groups/created-by/{userId}
+     * GET /api/groups/created-by/{userCode}
      * Get groups created by a user
      */
-    @GetMapping("/created-by/{userId}")
+    @GetMapping("/created-by/{userCode}")
     public ResponseEntity<List<GroupDTO>> getGroupsByCreator(
-            @PathVariable UUID userId) {
-        List<GroupDTO> groups = groupService.getGroupsByCreator(userId);
+            @PathVariable String userCode) {
+        List<GroupDTO> groups = groupService.getGroupsByCreator(userCode);
         return ResponseEntity.ok(groups);
     }
 
     /**
-     * GET /api/groups/user/{userId}
+     * GET /api/groups/user/{userCode}
      * Get groups where user is a member
      */
-    @GetMapping("/user/{userId}")
+    @GetMapping("/user/{userCode}")
     public ResponseEntity<List<GroupDTO>> getUserGroups(
-            @PathVariable UUID userId) {
-        List<GroupDTO> groups = groupService.getUserGroups(userId);
+            @PathVariable String userCode) {
+        List<GroupDTO> groups = groupService.getUserGroups(userCode);
         return ResponseEntity.ok(groups);
     }
 
     /**
-     * PUT /api/groups/{groupId}
+     * PUT /api/groups/{groupCode}
      * Update a group
      */
-    @PutMapping("/{groupId}")
+    @PutMapping("/{groupCode}")
     public ResponseEntity<GroupDTO> updateGroup(
-            @PathVariable UUID groupId,
+            @PathVariable String groupCode,
             @Valid @RequestBody UpdateGroupRequest request,
-            @RequestHeader("User-Id") UUID userId) {
-        GroupDTO group = groupService.updateGroup(groupId, userId, request);
+            @RequestHeader("userCode") String userCode) {
+        GroupDTO group = groupService.updateGroup(groupCode, userCode, request);
         return ResponseEntity.ok(group);
     }
 
     /**
-     * DELETE /api/groups/{groupId}
+     * DELETE /api/groups/{groupCode}
      * Delete a group
      */
-    @DeleteMapping("/{groupId}")
+    @DeleteMapping("/{groupCode}")
     public ResponseEntity<Void> deleteGroup(
-            @PathVariable UUID groupId,
-            @RequestHeader("User-Id") UUID userId) {
-        groupService.deleteGroup(groupId, userId);
+            @PathVariable String groupCode,
+            @RequestHeader("userCode") String userCode) {
+        groupService.deleteGroup(groupCode, userCode);
         return ResponseEntity.noContent().build();
     }
 
     // ========== MEMBERSHIP ENDPOINTS ==========
 
     /**
-     * POST /api/groups/{groupId}/members
-     * Add a member to the group
+     * POST /api/groups/{groupCode}/request-join
+     * Request to join group
      */
-    @PostMapping("/{groupId}/members")
-    public ResponseEntity<GroupMembershipDTO> addMember(
-            @PathVariable UUID groupId,
-            @Valid @RequestBody AddMemberRequest request,
-            @RequestHeader("User-Id") UUID userId) {
-        GroupMembershipDTO membership = groupService.addMember(groupId, userId, request);
+    @PostMapping("/{groupCode}/request-join")
+    public ResponseEntity<GroupMembershipDTO> requestToJoin(
+            @PathVariable String groupCode,
+            @RequestHeader("userCode") String userCode) {
+        GroupMembershipDTO membership = groupService.requestToJoin(groupCode, userCode);
         return ResponseEntity.status(HttpStatus.CREATED).body(membership);
     }
 
     /**
-     * GET /api/groups/{groupId}/members
+     * POST /api/groups/{groupCode}/approve/{targetUserCode}
+     * Approve join request
+     */
+    @PostMapping("/{groupCode}/approve/{targetUserCode}")
+    public ResponseEntity<GroupMembershipDTO> approveRequest(
+            @PathVariable String groupCode,
+            @PathVariable String targetUserCode,
+            @RequestHeader("userCode") String userCode) {
+        GroupMembershipDTO membership = groupService.approveRequest(groupCode, userCode, targetUserCode);
+        return ResponseEntity.ok(membership);
+    }
+
+    /**
+     * POST /api/groups/{groupCode}/members
+     * Directly add a member to the group
+     */
+    @PostMapping("/{groupCode}/members")
+    public ResponseEntity<GroupMembershipDTO> addMember(
+            @PathVariable String groupCode,
+            @Valid @RequestBody AddMemberRequest request,
+            @RequestHeader("userCode") String userCode) {
+        GroupMembershipDTO membership = groupService.addMember(groupCode, userCode, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(membership);
+    }
+
+    /**
+     * POST /api/groups/{groupCode}/reject/{targetUserCode}
+     * Reject join request
+     */
+    @PostMapping("/{groupCode}/reject/{targetUserCode}")
+    public ResponseEntity<Void> rejectRequest(
+            @PathVariable String groupCode,
+            @PathVariable String targetUserCode,
+            @RequestHeader("userCode") String userCode) {
+        groupService.rejectRequest(groupCode, userCode, targetUserCode);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * POST /api/groups/{groupCode}/invite
+     * Invite a member to the group
+     */
+    @PostMapping("/{groupCode}/invite")
+    public ResponseEntity<GroupMembershipDTO> inviteMember(
+            @PathVariable String groupCode,
+            @Valid @RequestBody AddMemberRequest request,
+            @RequestHeader("userCode") String userCode) {
+        GroupMembershipDTO membership = groupService.inviteMember(groupCode, userCode, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(membership);
+    }
+
+    /**
+     * POST /api/groups/{groupCode}/accept-invite
+     * Accept group invitation
+     */
+    @PostMapping("/{groupCode}/accept-invite")
+    public ResponseEntity<GroupMembershipDTO> acceptInvitation(
+            @PathVariable String groupCode,
+            @RequestHeader("userCode") String userCode) {
+        GroupMembershipDTO membership = groupService.acceptInvitation(groupCode, userCode);
+        return ResponseEntity.ok(membership);
+    }
+
+    /**
+     * GET /api/groups/{groupCode}/members
      * Get all members of a group
      */
-    @GetMapping("/{groupId}/members")
+    @GetMapping("/{groupCode}/members")
     public ResponseEntity<List<GroupMembershipDTO>> getGroupMembers(
-            @PathVariable UUID groupId) {
-        List<GroupMembershipDTO> members = groupService.getGroupMembers(groupId);
+            @PathVariable String groupCode) {
+        List<GroupMembershipDTO> members = groupService.getGroupMembers(groupCode);
         return ResponseEntity.ok(members);
     }
 
     /**
-     * GET /api/groups/{groupId}/members/{userId}
+     * GET /api/groups/{groupCode}/members/{userCode}
      * Get a specific user's membership in the group
      */
-    @GetMapping("/{groupId}/members/{userId}")
+    @GetMapping("/{groupCode}/members/{userCode}")
     public ResponseEntity<GroupMembershipDTO> getUserMembership(
-            @PathVariable UUID groupId,
-            @PathVariable UUID userId) {
-        GroupMembershipDTO membership = groupService.getUserMembership(groupId, userId);
+            @PathVariable String groupCode,
+            @PathVariable String userCode) {
+        GroupMembershipDTO membership = groupService.getUserMembership(groupCode, userCode);
         return ResponseEntity.ok(membership);
     }
 
     /**
-     * PUT /api/groups/{groupId}/members/{memberId}/role
+     * PUT /api/groups/{groupCode}/members/{memberCode}/role
      * Update a member's role
      */
-    @PutMapping("/{groupId}/members/{memberId}/role")
+    @PutMapping("/{groupCode}/members/{memberCode}/role")
     public ResponseEntity<GroupMembershipDTO> updateMemberRole(
-            @PathVariable UUID groupId,
-            @PathVariable UUID memberId,
+            @PathVariable String groupCode,
+            @PathVariable String memberCode,
             @RequestBody MemberRole newRole,
-            @RequestHeader("User-Id") UUID userId) {
+            @RequestHeader("userCode") String userCode) {
         GroupMembershipDTO membership = groupService.updateMemberRole(
-                groupId, userId, memberId, newRole);
+                groupCode, userCode, memberCode, newRole);
         return ResponseEntity.ok(membership);
     }
 
     /**
-     * DELETE /api/groups/{groupId}/members/{memberId}
+     * DELETE /api/groups/{groupCode}/members/{memberCode}
      * Remove a member from the group
      */
-    @DeleteMapping("/{groupId}/members/{memberId}")
+    @DeleteMapping("/{groupCode}/members/{memberCode}")
     public ResponseEntity<Void> removeMember(
-            @PathVariable UUID groupId,
-            @PathVariable UUID memberId,
-            @RequestHeader("User-Id") UUID userId) {
-        groupService.removeMember(groupId, userId, memberId);
+            @PathVariable String groupCode,
+            @PathVariable String memberCode,
+            @RequestHeader("userCode") String userCode) {
+        groupService.removeMember(groupCode, userCode, memberCode);
         return ResponseEntity.noContent().build();
     }
 }

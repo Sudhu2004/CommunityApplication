@@ -9,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/events")
@@ -21,149 +20,149 @@ public class EventController {
     @PostMapping
     public ResponseEntity<EventDTO> createEvent(
             @Valid @RequestBody CreateEventRequest request,
-            @RequestHeader("User-Id") UUID userId) {
-        EventDTO event = eventService.createEvent(userId, request);
+            @RequestHeader("userCode") String userCode) {
+        EventDTO event = eventService.createEvent(userCode, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(event);
     }
 
     /**
-     * GET /api/events/{eventId}
+     * GET /api/events/{eventCode}
      * Get an event by ID
      */
-    @GetMapping("/{eventId}")
-    public ResponseEntity<EventDTO> getEvent(@PathVariable UUID eventId) {
-        EventDTO event = eventService.getEventById(eventId);
+    @GetMapping("/{eventCode}")
+    public ResponseEntity<EventDTO> getEvent(@PathVariable String eventCode) {
+        EventDTO event = eventService.getEventByCode(eventCode);
         return ResponseEntity.ok(event);
     }
 
     /**
-     * GET /api/events/community/{communityId}
+     * GET /api/events/community/{communityCode}
      * Get all events in a community
      */
-    @GetMapping("/community/{communityId}")
+    @GetMapping("/community/{communityCode}")
     public ResponseEntity<List<EventDTO>> getEventsByCommunity(
-            @PathVariable UUID communityId) {
-        List<EventDTO> events = eventService.getEventsByCommunity(communityId);
+            @PathVariable String communityCode) {
+        List<EventDTO> events = eventService.getEventsByCommunity(communityCode);
         return ResponseEntity.ok(events);
     }
 
     /**
-     * GET /api/events/community/{communityId}/upcoming
+     * GET /api/events/community/{communityCode}/upcoming
      * Get upcoming events in a community
      */
-    @GetMapping("/community/{communityId}/upcoming")
+    @GetMapping("/community/{communityCode}/upcoming")
     public ResponseEntity<List<EventDTO>> getUpcomingEventsByCommunity(
-            @PathVariable UUID communityId) {
-        List<EventDTO> events = eventService.getUpcomingEventsByCommunity(communityId);
+            @PathVariable String communityCode) {
+        List<EventDTO> events = eventService.getUpcomingEventsByCommunity(communityCode);
         return ResponseEntity.ok(events);
     }
 
     /**
-     * GET /api/events/group/{groupId}
+     * GET /api/events/group/{groupCode}
      * Get all events in a group
      */
-    @GetMapping("/group/{groupId}")
+    @GetMapping("/group/{groupCode}")
     public ResponseEntity<List<EventDTO>> getEventsByGroup(
-            @PathVariable UUID groupId) {
-        List<EventDTO> events = eventService.getEventsByGroup(groupId);
+            @PathVariable String groupCode) {
+        List<EventDTO> events = eventService.getEventsByGroup(groupCode);
         return ResponseEntity.ok(events);
     }
 
     /**
-     * GET /api/events/group/{groupId}/upcoming
+     * GET /api/events/group/{groupCode}/upcoming
      * Get upcoming events in a group
      */
-    @GetMapping("/group/{groupId}/upcoming")
+    @GetMapping("/group/{groupCode}/upcoming")
     public ResponseEntity<List<EventDTO>> getUpcomingEventsByGroup(
-            @PathVariable UUID groupId) {
-        List<EventDTO> events = eventService.getUpcomingEventsByGroup(groupId);
+            @PathVariable String groupCode) {
+        List<EventDTO> events = eventService.getUpcomingEventsByGroup(groupCode);
         return ResponseEntity.ok(events);
     }
 
     /**
-     * PUT /api/events/{eventId}
+     * PUT /api/events/{eventCode}
      * Update an event
      */
-    @PutMapping("/{eventId}")
+    @PutMapping("/{eventCode}")
     public ResponseEntity<EventDTO> updateEvent(
-            @PathVariable UUID eventId,
+            @PathVariable String eventCode,
             @Valid @RequestBody UpdateEventRequest request,
-            @RequestHeader("User-Id") UUID userId) {
-        EventDTO event = eventService.updateEvent(eventId, userId, request);
+            @RequestHeader("userCode") String userCode) {
+        EventDTO event = eventService.updateEvent(eventCode, userCode, request);
         return ResponseEntity.ok(event);
     }
 
     /**
-     * DELETE /api/events/{eventId}
+     * DELETE /api/events/{eventCode}
      * Delete an event
      */
-    @DeleteMapping("/{eventId}")
+    @DeleteMapping("/{eventCode}")
     public ResponseEntity<Void> deleteEvent(
-            @PathVariable UUID eventId,
-            @RequestHeader("User-Id") UUID userId) {
-        eventService.deleteEvent(eventId, userId);
+            @PathVariable String eventCode,
+            @RequestHeader("userCode") String userCode) {
+        eventService.deleteEvent(eventCode, userCode);
         return ResponseEntity.noContent().build();
     }
 
     /**
-     * PATCH /api/events/{eventId}/attendance
+     * PATCH /api/events/{eventCode}/attendance
      * Toggle attendance for an event
      */
-    @PatchMapping("/{eventId}/attendance")
+    @PatchMapping("/{eventCode}/attendance")
     public ResponseEntity<EventDTO> toggleAttendance(
-            @PathVariable UUID eventId,
+            @PathVariable String eventCode,
             @RequestParam("enabled") boolean enabled,
-            @RequestHeader("User-Id") UUID userId) {
-        EventDTO event = eventService.toggleAttendance(eventId, userId, enabled);
+            @RequestHeader("userCode") String userCode) {
+        EventDTO event = eventService.toggleAttendance(eventCode, userCode, enabled);
         return ResponseEntity.ok(event);
     }
 
 // ========== ATTENDANCE ENDPOINTS ==========
 
     /**
-     * POST /api/events/{eventId}/attendance
+     * POST /api/events/{eventCode}/attendance
      * Mark attendance for a user
      */
-    @PostMapping("/{eventId}/attendance")
+    @PostMapping("/{eventCode}/attendance")
     public ResponseEntity<EventAttendanceDTO> markAttendance(
-            @PathVariable UUID eventId,
+            @PathVariable String eventCode,
             @Valid @RequestBody MarkAttendanceRequest request,
-            @RequestHeader("User-Id") UUID userId) {
-        EventAttendanceDTO attendance = eventService.markAttendance(eventId, userId, request);
+            @RequestHeader("userCode") String userCode) {
+        EventAttendanceDTO attendance = eventService.markAttendance(eventCode, userCode, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(attendance);
     }
 
     /**
-     * GET /api/events/{eventId}/attendance
+     * GET /api/events/{eventCode}/attendance
      * Get all attendance records for an event
      */
-    @GetMapping("/{eventId}/attendance")
+    @GetMapping("/{eventCode}/attendance")
     public ResponseEntity<List<EventAttendanceDTO>> getEventAttendance(
-            @PathVariable UUID eventId) {
-        List<EventAttendanceDTO> attendance = eventService.getEventAttendance(eventId);
+            @PathVariable String eventCode) {
+        List<EventAttendanceDTO> attendance = eventService.getEventAttendance(eventCode);
         return ResponseEntity.ok(attendance);
     }
 
     /**
-     * GET /api/events/{eventId}/attendance/group/{groupId}
+     * GET /api/events/{eventCode}/attendance/group/{groupCode}
      * Get attendance records for an event by group
      */
-    @GetMapping("/{eventId}/attendance/group/{groupId}")
+    @GetMapping("/{eventCode}/attendance/group/{groupCode}")
     public ResponseEntity<List<EventAttendanceDTO>> getEventAttendanceByGroup(
-            @PathVariable UUID eventId,
-            @PathVariable UUID groupId) {
-        List<EventAttendanceDTO> attendance = eventService.getEventAttendanceByGroup(eventId, groupId);
+            @PathVariable String eventCode,
+            @PathVariable String groupCode) {
+        List<EventAttendanceDTO> attendance = eventService.getEventAttendanceByGroup(eventCode, groupCode);
         return ResponseEntity.ok(attendance);
     }
 
     /**
-     * GET /api/events/{eventId}/attendance/stats
+     * GET /api/events/{eventCode}/attendance/stats
      * Get attendance statistics for an event
      */
-    @GetMapping("/{eventId}/attendance/stats")
+    @GetMapping("/{eventCode}/attendance/stats")
     public ResponseEntity<AttendanceStatsDTO> getAttendanceStats(
-            @PathVariable UUID eventId) {
-        AttendanceStatsDTO stats = eventService.getAttendanceStats(eventId);
+            @PathVariable String eventCode) {
+        AttendanceStatsDTO stats = eventService.getAttendanceStats(eventCode);
         return ResponseEntity.ok(stats);
     }
 }

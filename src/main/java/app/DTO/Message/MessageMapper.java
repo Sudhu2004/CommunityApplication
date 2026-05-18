@@ -1,9 +1,8 @@
 package app.DTO.Message;
 
-import app.Database.Event;
-import app.Database.Media;
-import app.Database.Message;
-import app.Database.User;
+import app.Database.*;
+import app.Service.GlobalShortCodeService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -13,6 +12,9 @@ import java.util.stream.Collectors;
 @Component
 public class MessageMapper {
 
+    @Autowired
+    private GlobalShortCodeService globalShortCodeService;
+
     public MessageDTO toDTO(Message message) {
         if (message == null) {
             return null;
@@ -20,8 +22,10 @@ public class MessageMapper {
 
         MessageDTO dto = new MessageDTO();
         dto.setId(message.getId());
-        dto.setEventId(message.getEvent() != null ? message.getEvent().getId() : null);
-        dto.setSenderId(message.getSender() != null ? message.getSender().getId() : null);
+        dto.setEventCode(message.getEvent() != null ? globalShortCodeService.getShortCode(DatabaseType.EVENTS, message.getEvent().getId()) : null);
+        dto.setCommunityCode(message.getCommunity() != null ? globalShortCodeService.getShortCode(DatabaseType.COMMUNITY, message.getCommunity().getId()) : null);
+        dto.setGroupCode(message.getGroup() != null ? globalShortCodeService.getShortCode(DatabaseType.GROUP, message.getGroup().getId()) : null);
+        dto.setUserCode(message.getSender() != null ? globalShortCodeService.getShortCode(DatabaseType.USER, message.getSender().getId()) : null);
         dto.setSenderName(message.getSender() != null ? message.getSender().getName() : null);
         dto.setSenderProfilePhotoUrl(message.getSender() != null ? message.getSender().getProfilePhotoUrl() : null);
         dto.setType(message.getType());
@@ -38,13 +42,15 @@ public class MessageMapper {
         return dto;
     }
 
-    public Message toEntity(CreateMessageRequest request, Event event, User sender) {
+    public Message toEntity(CreateMessageRequest request, Event event, Community community, Group group, User sender) {
         if (request == null) {
             return null;
         }
 
         Message message = new Message();
         message.setEvent(event);
+        message.setCommunity(community);
+        message.setGroup(group);
         message.setSender(sender);
         message.setType(request.getType());
         message.setContent(request.getContent());

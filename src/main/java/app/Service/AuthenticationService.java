@@ -195,6 +195,10 @@ public class AuthenticationService {
         );
     }
 
+    public String getUserCodeByEmail(String email) {
+        return userService.getUserShortCodeByEmail(email);
+    }
+
     public AuthResponse authenticate(AuthRequest authRequest) {
         String email = authRequest.getEmail();
         String password = authRequest.getPassword();
@@ -226,8 +230,9 @@ public class AuthenticationService {
             System.out.println("Authentication manager Completed");
 
             String jwtToken = jwtService.generateToken(email);
+            String userCode = userService.getUserShortCodeByEmail(email);
             System.out.println("Sending Token: " + jwtToken);
-            return new AuthResponse(jwtToken, email);
+            return new AuthResponse(jwtToken, email, userCode);
         } catch (Exception e) {
             System.err.println("Authentication failed: " + e.getMessage());
             throw new APIException(

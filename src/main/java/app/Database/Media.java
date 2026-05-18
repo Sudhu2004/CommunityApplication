@@ -10,8 +10,8 @@ import java.util.UUID;
 public class Media {
 
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue
+    @org.hibernate.annotations.UuidGenerator
     private UUID id;
 
     @Enumerated(EnumType.STRING)

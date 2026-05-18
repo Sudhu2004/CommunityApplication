@@ -3,6 +3,7 @@ package app.Repository;
 import app.Database.Community;
 import app.Database.CommunityMembership;
 import app.Database.MemberRole;
+import app.Database.MembershipStatus;
 import app.Database.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,11 +20,20 @@ public interface CommunityMembershipRepository extends JpaRepository<CommunityMe
     // Check if user is member of a community
     Optional<CommunityMembership> findByUserAndCommunity(User user, Community community);
 
-    // Alternative with IDs
     Optional<CommunityMembership> findByUserIdAndCommunityId(UUID userId, UUID communityId);
 
-    // Check if membership exists
+    // Filtered by status
+    Optional<CommunityMembership> findByUserIdAndCommunityIdAndStatus(UUID userId, UUID communityId, MembershipStatus status);
+
     boolean existsByUserIdAndCommunityId(UUID userId, UUID communityId);
+
+    boolean existsByUserIdAndCommunityIdAndStatus(UUID userId, UUID communityId, MembershipStatus status);
+
+    List<CommunityMembership> findByCommunityAndStatus(Community community, MembershipStatus status);
+
+    List<CommunityMembership> findByCommunityIdAndStatus(UUID communityId, MembershipStatus status);
+
+    List<CommunityMembership> findByUserIdAndStatus(UUID userId, MembershipStatus status);
 
     // Get all members of a community
     List<CommunityMembership> findByCommunity(Community community);

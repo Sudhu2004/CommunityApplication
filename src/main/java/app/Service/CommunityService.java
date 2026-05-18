@@ -39,6 +39,12 @@ public class CommunityService {
     @Autowired
     private GlobalShortCodeService globalShortCodeService;
 
+    @Autowired
+    private MessageService messageService;
+
+    @Autowired
+    private ActivityService activityService;
+
     /**
      * Create a new community
      */
@@ -55,7 +61,8 @@ public class CommunityService {
 
         // Save community
         Community savedCommunity = communityRepository.save(community);
-        globalShortCodeService.generateAndReserve(DatabaseType.COMMUNITY, community.getId());
+
+        globalShortCodeService.generateAndReserve(DatabaseType.COMMUNITY, savedCommunity.getId());
 
         // Automatically add creator as OWNER
         CommunityMembership creatorMembership = new CommunityMembership();
@@ -64,16 +71,21 @@ public class CommunityService {
         creatorMembership.setRole(MemberRole.OWNER);
         membershipRepository.save(creatorMembership);
 
+        // Activity Message
+        activityService.record(
+                DatabaseType.COMMUNITY,
+                community.getId(),
+                community.getName() + " created by " + creator.getName()
+        );
+
         return communityMapper.toDTO(savedCommunity);
     }
 
     /**
-     * Get community by ID
+     * Get community by Code
      */
-    public CommunityDTO getCommunityById(UUID communityId) {
-        Community community = communityRepository.findById(communityId)
-                .orElseThrow(() -> new RuntimeException("Community not found with id: " + communityId));
-
+    public CommunityDTO getCommunityByCode(String communityCode) {
+        Community community = getCommunityEntityByCode(communityCode);
         return communityMapper.toDTO(community);
     }
 
@@ -90,9 +102,8 @@ public class CommunityService {
     /**
      * Get communities created by a user
      */
-    public List<CommunityDTO> getCommunitiesByCreator(UUID userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+    public List<CommunityDTO> getCommunitiesByCreator(String userCode) {
+        User user = userService.getUserByShortCode(userCode);
 
         List<Community> communities = communityRepository.findByCreatedBy(user);
         return communities.stream()
@@ -103,9 +114,8 @@ public class CommunityService {
     /**
      * Get communities where user is a member
      */
-    public List<CommunityDTO> getUserCommunities(UUID userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+    public List<CommunityDTO> getUserCommunities(String userCode) {
+        User user = userService.getUserByShortCode(userCode);
 
         List<CommunityMembership> memberships = membershipRepository.findByUser(user);
         return memberships.stream()
@@ -117,27 +127,40 @@ public class CommunityService {
      * Update community
      */
     @Transactional
-    public CommunityDTO updateCommunity(UUID communityId, UUID userId, UpdateCommunityRequest request) {
+    public CommunityDTO updateCommunity(String communityCode, String userCode, UpdateCommunityRequest request) {
         // Find community
-        Community community = communityRepository.findById(communityId)
-                .orElseThrow(() -> new RuntimeException("Community not found with id: " + communityId));
+        Community community = getCommunityEntityByCode(communityCode);
+        User user = userService.getUserByShortCode(userCode);
 
         // Check authorization (must be OWNER or ADMIN)
-        if (!canManageCommunity(userId, communityId)) {
+        if (!canManageCommunity(user.getId(), community.getId())) {
             throw new RuntimeException("You don't have permission to update this community");
         }
 
         // Update fields if provided
         if (request.getName() != null && !request.getName().isEmpty()) {
             community.setName(request.getName());
+            // Activity Message
+            activityService.record(
+                    DatabaseType.COMMUNITY,
+                    community.getId(),
+                    "Name was modified"
+            );
         }
 
         if (request.getDescription() != null) {
             community.setDescription(request.getDescription());
+            // Activity Message
+            activityService.record(
+                    DatabaseType.COMMUNITY,
+                    community.getId(),
+                    "Description was modified"
+            );
         }
 
         // Save updated community
         Community updatedCommunity = communityRepository.save(community);
+
         return communityMapper.toDTO(updatedCommunity);
     }
 
@@ -145,78 +168,189 @@ public class CommunityService {
      * Delete community
      */
     @Transactional
-    public void deleteCommunity(UUID communityId, UUID userId) {
+    public void deleteCommunity(String communityCode, String userCode) {
         // Find community
-        Community community = communityRepository.findById(communityId)
-                .orElseThrow(() -> new RuntimeException("Community not found with id: " + communityId));
+        Community community = getCommunityEntityByCode(communityCode);
+        User user = userService.getUserByShortCode(userCode);
 
         // Check authorization (must be OWNER)
-        if (!isOwner(userId, communityId)) {
+        if (!isOwner(user.getId(), community.getId())) {
             throw new RuntimeException("Only the owner can delete this community");
         }
 
         // Delete community (cascade will handle memberships and groups)
         communityRepository.delete(community);
+
+        // Activity Message
+        activityService.record(
+                DatabaseType.COMMUNITY,
+                community.getId(),
+                community.getName() + " was deleted"
+        );
     }
 
     /**
-     * Add member to community
+     * Request to join community
      */
     @Transactional
-    public CommunityMembershipDTO addMember(UUID communityId, UUID requesterId, AddMemberRequest request) {
-        // Find community
-        Community community = communityRepository.findById(communityId)
-                .orElseThrow(() -> new RuntimeException("Community not found with id: " + communityId));
+    public CommunityMembershipDTO requestToJoin(String communityCode, String userCode) {
+        Community community = getCommunityEntityByCode(communityCode);
+        User user = userService.getUserByShortCode(userCode);
 
-        // Check authorization (must be OWNER or ADMIN)
-        if (!canManageCommunity(requesterId, communityId)) {
-            throw new RuntimeException("You don't have permission to add members");
-        }
+        // Check if already a member or pending
+        membershipRepository.findByUserIdAndCommunityId(user.getId(), community.getId())
+                .ifPresent(m -> {
+                    throw new RuntimeException("Membership already exists with status: " + m.getStatus());
+                });
 
-        // Find user to add
-        User userToAdd = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + request.getUserId()));
-
-        // Check if already a member
-        if (membershipRepository.existsByUserIdAndCommunityId(userToAdd.getId(), community.getId())) {
-            throw new RuntimeException("User is already a member of this community");
-        }
-
-        // Create membership
         CommunityMembership membership = new CommunityMembership();
         membership.setCommunity(community);
-        membership.setUser(userToAdd);
-        membership.setRole(request.getRole());
+        membership.setUser(user);
+        membership.setRole(MemberRole.MEMBER);
+        membership.setStatus(MembershipStatus.PENDING_APPROVAL);
 
-        // Save membership
-        CommunityMembership savedMembership = membershipRepository.save(membership);
-        return communityMapper.toMembershipDTO(savedMembership);
+        CommunityMembership saved = membershipRepository.save(membership);
+        return communityMapper.toMembershipDTO(saved);
     }
 
     /**
-     * Get all members of a community
+     * Approve join request
      */
-    public List<CommunityMembershipDTO> getCommunityMembers(UUID communityId) {
-        Community community = communityRepository.findById(communityId)
-                .orElseThrow(() -> new RuntimeException("Community not found with id: " + communityId));
+    @Transactional
+    public CommunityMembershipDTO approveRequest(String communityCode, String requesterCode, String targetUserCode) {
+        Community community = getCommunityEntityByCode(communityCode);
+        User admin = userService.getUserByShortCode(requesterCode);
 
-        List<CommunityMembership> memberships = membershipRepository.findByCommunity(community);
+        if (!canManageCommunity(admin.getId(), community.getId())) {
+            throw new RuntimeException("Unauthorized to approve requests");
+        }
+
+        User userToApprove = userService.getUserByShortCode(targetUserCode);
+        CommunityMembership membership = membershipRepository.findByUserIdAndCommunityIdAndStatus(
+                userToApprove.getId(), community.getId(), MembershipStatus.PENDING_APPROVAL)
+                .orElseThrow(() -> new RuntimeException("No pending join request found for this user"));
+
+        membership.setStatus(MembershipStatus.ACCEPTED);
+        CommunityMembership saved = membershipRepository.save(membership);
+
+        // Activity Message
+        activityService.record(
+                DatabaseType.COMMUNITY,
+                globalShortCodeService.getUUIDfromShortCode(DatabaseType.COMMUNITY, communityCode),
+                userToApprove.getName() + " joined the community"
+        );
+        return communityMapper.toMembershipDTO(saved);
+    }
+
+    /**
+     * Reject join request
+     */
+    @Transactional
+    public void rejectRequest(String communityCode, String requesterCode, String targetUserCode) {
+        Community community = getCommunityEntityByCode(communityCode);
+        User admin = userService.getUserByShortCode(requesterCode);
+
+        if (!canManageCommunity(admin.getId(), community.getId())) {
+            throw new RuntimeException("Unauthorized to reject requests");
+        }
+
+        User userToReject = userService.getUserByShortCode(targetUserCode);
+        CommunityMembership membership = membershipRepository.findByUserIdAndCommunityIdAndStatus(
+                userToReject.getId(), community.getId(), MembershipStatus.PENDING_APPROVAL)
+                .orElseThrow(() -> new RuntimeException("No pending join request found for this user"));
+
+        membershipRepository.delete(membership);
+    }
+
+    /**
+     * Invite member (formerly addMember)
+     */
+    @Transactional
+    public CommunityMembershipDTO inviteMember(String communityCode, String requesterCode, AddMemberRequest request) {
+        Community community = getCommunityEntityByCode(communityCode);
+        User admin = userService.getUserByShortCode(requesterCode);
+
+        if (!canManageCommunity(admin.getId(), community.getId())) {
+            throw new RuntimeException("Unauthorized to invite members");
+        }
+
+        User userToInvite = userService.getUserByShortCode(request.getUserCode());
+
+        membershipRepository.findByUserIdAndCommunityId(userToInvite.getId(), community.getId())
+                .ifPresent(m -> {
+                    throw new RuntimeException("Membership already exists with status: " + m.getStatus());
+                });
+
+        CommunityMembership membership = new CommunityMembership();
+        membership.setCommunity(community);
+        membership.setUser(userToInvite);
+        membership.setRole(request.getRole());
+        membership.setStatus(MembershipStatus.PENDING_INVITATION);
+
+        CommunityMembership saved = membershipRepository.save(membership);
+        return communityMapper.toMembershipDTO(saved);
+    }
+
+    /**
+     * Accept invitation
+     */
+    @Transactional
+    public CommunityMembershipDTO acceptInvitation(String communityCode, String userCode) {
+        Community community = getCommunityEntityByCode(communityCode);
+        User user = userService.getUserByShortCode(userCode);
+
+        CommunityMembership membership = membershipRepository.findByUserIdAndCommunityIdAndStatus(
+                user.getId(), community.getId(), MembershipStatus.PENDING_INVITATION)
+                .orElseThrow(() -> new RuntimeException("No pending invitation found"));
+
+        membership.setStatus(MembershipStatus.ACCEPTED);
+        CommunityMembership saved = membershipRepository.save(membership);
+
+        // Activity Message
+        activityService.record(
+                DatabaseType.COMMUNITY,
+                globalShortCodeService.getUUIDfromShortCode(DatabaseType.COMMUNITY, communityCode),
+                user.getName() + " joined the community"
+        );
+
+        return communityMapper.toMembershipDTO(saved);
+    }
+
+    /**
+     * Get all members of a community (ACCEPTED only)
+     */
+    public List<CommunityMembershipDTO> getCommunityMembers(String communityCode) {
+        Community community = getCommunityEntityByCode(communityCode);
+
+        List<CommunityMembership> memberships = membershipRepository.findByCommunityIdAndStatus(community.getId(), MembershipStatus.ACCEPTED);
         return memberships.stream()
                 .map(communityMapper::toMembershipDTO)
                 .collect(Collectors.toList());
     }
 
     /**
+     * Get all pending requests (Admin only)
+     */
+    public List<CommunityMembershipDTO> getPendingRequests(String communityCode, String userCode) {
+        Community community = getCommunityEntityByCode(communityCode);
+        User user = userService.getUserByShortCode(userCode);
+
+        if (!canManageCommunity(user.getId(), community.getId())) {
+            throw new RuntimeException("Unauthorized to view pending requests");
+        }
+
+        return membershipRepository.findByCommunityIdAndStatus(community.getId(), MembershipStatus.PENDING_APPROVAL)
+                .stream().map(communityMapper::toMembershipDTO).collect(Collectors.toList());
+    }
+
+    /**
      * Get user's membership in a community
      */
-    public CommunityMembershipDTO getUserMembership(UUID communityId, UUID userId) {
-        Community community = communityRepository.findById(communityId)
-                .orElseThrow(() -> new RuntimeException("Community not found with id: " + communityId));
+    public CommunityMembershipDTO getUserMembership(String communityCode, String userCode) {
+        Community community = getCommunityEntityByCode(communityCode);
+        User user = userService.getUserByShortCode(userCode);
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
-
-        CommunityMembership membership = membershipRepository.findByUserAndCommunity(user, community)
+        CommunityMembership membership = membershipRepository.findByUserIdAndCommunityId(user.getId(), community.getId())
                 .orElseThrow(() -> new RuntimeException("User is not a member of this community"));
 
         return communityMapper.toMembershipDTO(membership);
@@ -226,33 +360,33 @@ public class CommunityService {
      * Update member role
      */
     @Transactional
-    public CommunityMembershipDTO updateMemberRole(UUID communityId, UUID requesterId,
-                                                   UUID memberId, MemberRole newRole) {
-        // Find community
-        Community community = communityRepository.findById(communityId)
-                .orElseThrow(() -> new RuntimeException("Community not found with id: " + communityId));
+    public CommunityMembershipDTO updateMemberRole(String communityCode, String requesterCode,
+                                                   String memberCode, MemberRole newRole) {
+        Community community = getCommunityEntityByCode(communityCode);
+        User requester = userService.getUserByShortCode(requesterCode);
 
-        // Check authorization (must be OWNER)
-        if (!isOwner(requesterId, communityId)) {
+        if (!isOwner(requester.getId(), community.getId())) {
             throw new RuntimeException("Only the owner can change member roles");
         }
 
-        // Find user to update
-        User memberUser = userRepository.findById(memberId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + memberId));
+        User memberUser = userService.getUserByShortCode(memberCode);
+        CommunityMembership membership = membershipRepository.findByUserIdAndCommunityIdAndStatus(
+                memberUser.getId(), community.getId(), MembershipStatus.ACCEPTED)
+                .orElseThrow(() -> new RuntimeException("User is not an active member of this community"));
 
-        // Find membership
-        CommunityMembership membership = membershipRepository.findByUserAndCommunity(memberUser, community)
-                .orElseThrow(() -> new RuntimeException("User is not a member of this community"));
-
-        // Don't allow changing owner's role
-        if (membership.getRole() == MemberRole.OWNER) {
-            throw new RuntimeException("Cannot change the owner's role");
+        if (membership.getRole() == MemberRole.OWNER && newRole != MemberRole.OWNER) {
+            checkLastOwner(community.getId());
         }
 
-        // Update role
         membership.setRole(newRole);
         CommunityMembership updatedMembership = membershipRepository.save(membership);
+
+        // Activity Message
+        activityService.record(
+                DatabaseType.COMMUNITY,
+                community.getId(),
+                requester.getName() + " made " + memberUser.getName() + " " + newRole
+        );
 
         return communityMapper.toMembershipDTO(updatedMembership);
     }
@@ -261,31 +395,40 @@ public class CommunityService {
      * Remove member from community
      */
     @Transactional
-    public void removeMember(UUID communityId, UUID requesterId, UUID memberId) {
-        // Find community
-        Community community = communityRepository.findById(communityId)
-                .orElseThrow(() -> new RuntimeException("Community not found with id: " + communityId));
+    public void removeMember(String communityCode, String requesterCode, String memberCode) {
+        Community community = getCommunityEntityByCode(communityCode);
+        User requester = userService.getUserByShortCode(requesterCode);
 
-        // Check authorization (must be OWNER or ADMIN)
-        if (!canManageCommunity(requesterId, communityId)) {
-            throw new RuntimeException("You don't have permission to remove members");
+        User memberUser = userService.getUserByShortCode(memberCode);
+        CommunityMembership membership = membershipRepository.findByUserIdAndCommunityId(
+                memberUser.getId(), community.getId())
+                .orElseThrow(() -> new RuntimeException("Membership not found"));
+
+        // If self-leaving
+        if (requester.getId().equals(memberUser.getId())) {
+            if (membership.getRole() == MemberRole.OWNER) {
+                checkLastOwner(community.getId());
+            }
+        } else {
+            // If being removed by someone else
+            if (!canManageCommunity(requester.getId(), community.getId())) {
+                throw new RuntimeException("Unauthorized to remove members");
+            }
+            if (membership.getRole() == MemberRole.OWNER) {
+                throw new RuntimeException("Cannot remove the owner");
+            }
         }
 
-        // Find user to remove
-        User memberUser = userRepository.findById(memberId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + memberId));
-
-        // Find membership
-        CommunityMembership membership = membershipRepository.findByUserAndCommunity(memberUser, community)
-                .orElseThrow(() -> new RuntimeException("User is not a member of this community"));
-
-        // Don't allow removing the owner
-        if (membership.getRole() == MemberRole.OWNER) {
-            throw new RuntimeException("Cannot remove the owner from the community");
-        }
-
-        // Delete membership
         membershipRepository.delete(membership);
+        
+        if (membership.getStatus() == MembershipStatus.ACCEPTED) {
+            // Activity Message
+            activityService.record(
+                    DatabaseType.COMMUNITY,
+                    globalShortCodeService.getUUIDfromShortCode(DatabaseType.COMMUNITY, communityCode),
+                    memberUser.getName() + " left the community"
+            );
+        }
     }
 
     /**
@@ -300,26 +443,28 @@ public class CommunityService {
 
     // ========== HELPER METHODS ==========
 
-    private boolean isOwner(UUID userId, UUID communityId) {
-        Community community = communityRepository.findById(communityId)
-                .orElseThrow(() -> new RuntimeException("Community not found"));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    private void checkLastOwner(UUID communityId) {
+        List<CommunityMembership> owners = membershipRepository.findByCommunityIdAndRole(communityId, MemberRole.OWNER);
+        if (owners.size() <= 1) {
+            throw new RuntimeException("Community must have at least one owner. Please appoint a new owner before leaving or changing role.");
+        }
+    }
 
-        return membershipRepository.findByUserAndCommunity(user, community)
-                .map(membership -> membership.getRole() == MemberRole.OWNER)
+    private Community getCommunityEntityByCode(String communityCode) {
+        UUID communityId = globalShortCodeService.getUUIDfromShortCode(DatabaseType.COMMUNITY, communityCode);
+        return communityRepository.findById(communityId)
+                .orElseThrow(() -> new RuntimeException("Community not found with code: " + communityCode));
+    }
+
+    private boolean isOwner(UUID userId, UUID communityId) {
+        return membershipRepository.findByUserIdAndCommunityIdAndStatus(userId, communityId, MembershipStatus.ACCEPTED)
+                .map(m -> m.getRole() == MemberRole.OWNER)
                 .orElse(false);
     }
 
     private boolean canManageCommunity(UUID userId, UUID communityId) {
-        Community community = communityRepository.findById(communityId)
-                .orElseThrow(() -> new RuntimeException("Community not found"));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        return membershipRepository.findByUserAndCommunity(user, community)
-                .map(membership -> membership.getRole() == MemberRole.OWNER ||
-                        membership.getRole() == MemberRole.ADMIN)
+        return membershipRepository.findByUserIdAndCommunityIdAndStatus(userId, communityId, MembershipStatus.ACCEPTED)
+                .map(m -> m.getRole() == MemberRole.OWNER || m.getRole() == MemberRole.ADMIN)
                 .orElse(false);
     }
 }

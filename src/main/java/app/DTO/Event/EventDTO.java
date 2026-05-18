@@ -5,47 +5,44 @@ import app.DTO.User.UserDTO;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.UUID;
 
 public class EventDTO {
-    private UUID id;
     private String title;
     private String description;
-    private UUID communityId;
+    private String communityCode;
     private String communityName;
-    private UUID groupId;
+    private String groupCode;
     private String groupName;
     private UserDTO createdBy;
     private LocalDate eventDate;
     private LocalTime eventTime;
     private String location;
     private Boolean attendanceEnabled;
+    private Boolean isNotice;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private int messageCount;
     private int attendanceCount;
+    private String eventCode;
 
     // Constructors
     public EventDTO() {}
 
     // Getters and Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    public UUID getCommunityId() { return communityId; }
-    public void setCommunityId(UUID communityId) { this.communityId = communityId; }
+    public String getCommunityCode() { return communityCode; }
+    public void setCommunityCode(String communityCode) { this.communityCode = communityCode; }
 
     public String getCommunityName() { return communityName; }
     public void setCommunityName(String communityName) { this.communityName = communityName; }
 
-    public UUID getGroupId() { return groupId; }
-    public void setGroupId(UUID groupId) { this.groupId = groupId; }
+    public String getGroupCode() { return groupCode; }
+    public void setGroupCode(String groupCode) { this.groupCode = groupCode; }
 
     public String getGroupName() { return groupName; }
     public void setGroupName(String groupName) { this.groupName = groupName; }
@@ -65,6 +62,9 @@ public class EventDTO {
     public Boolean getAttendanceEnabled() { return attendanceEnabled; }
     public void setAttendanceEnabled(Boolean attendanceEnabled) { this.attendanceEnabled = attendanceEnabled; }
 
+    public Boolean getIsNotice() { return isNotice; }
+    public void setIsNotice(Boolean isNotice) { this.isNotice = isNotice; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -76,4 +76,7 @@ public class EventDTO {
 
     public int getAttendanceCount() { return attendanceCount; }
     public void setAttendanceCount(int attendanceCount) { this.attendanceCount = attendanceCount; }
+
+    public String getEventCode() { return eventCode; }
+    public void setEventCode(String eventCode) { this.eventCode = eventCode; }
 }

@@ -33,6 +33,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/user/exists/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/v3/api-docs").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
                 )

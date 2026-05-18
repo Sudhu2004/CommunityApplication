@@ -34,18 +34,26 @@ public class EventService {
     private GroupMembershipRepository groupMembershipRepository;
 
     @Autowired
+    private CommunityMembershipRepository communityMembershipRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
     private EventMapper eventMapper;
 
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private GlobalShortCodeService globalShortCodeService;
+
     /**
      * Create a new event
      */
     @Transactional
-    public EventDTO createEvent(UUID creatorId, CreateEventRequest request) {
-        User creator = userRepository.findById(creatorId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + creatorId));
+    public EventDTO createEvent(String userCode, CreateEventRequest request) {
+        User creator = userService.getUserByShortCode(userCode);
 
         Event event = new Event();
         event.setTitle(request.getTitle());
@@ -57,33 +65,47 @@ public class EventService {
         event.setAttendanceEnabled(request.getAttendanceEnabled());
 
         // Set community if provided
-        if (request.getCommunityId() != null) {
-            Community community = communityRepository.findById(request.getCommunityId())
+        if (request.getCommunityCode() != null) {
+            UUID communityId = globalShortCodeService.getUUIDfromShortCode(DatabaseType.COMMUNITY, request.getCommunityCode());
+            Community community = communityRepository.findById(communityId)
                     .orElseThrow(() -> new RuntimeException("Community not found"));
+            
+            // Authorization for community-wide events (Notices)
+            if (request.getGroupCode() == null) {
+                if (!isCommunityAdminOrOwner(creator.getId(), community.getId())) {
+                    throw new RuntimeException("Only community owners or admins can create community-wide notices");
+                }
+                event.setIsNotice(true);
+            }
             event.setCommunity(community);
         }
 
         // Set group if provided
-        if (request.getGroupId() != null) {
-            Group group = groupRepository.findById(request.getGroupId())
+        if (request.getGroupCode() != null) {
+            UUID groupId = globalShortCodeService.getUUIDfromShortCode(DatabaseType.GROUP, request.getGroupCode());
+            Group group = groupRepository.findById(groupId)
                     .orElseThrow(() -> new RuntimeException("Group not found"));
 
             // Verify creator is a member of the group
-            if (!groupMembershipRepository.existsByUserIdAndGroupId(creator.getId(), group.getId())) {
-                throw new RuntimeException("You must be a member of the group to create events");
+            if (!groupMembershipRepository.existsByUserIdAndGroupIdAndStatus(creator.getId(), group.getId(), MembershipStatus.ACCEPTED)) {
+                throw new RuntimeException("You must be an active member of the group to create events");
             }
 
             event.setGroup(group);
-            // If group is set, also set the community
             if (event.getCommunity() == null) {
                 event.setCommunity(group.getCommunity());
             }
         }
 
-        Event savedEvent = eventRepository.save(event);
+        if (event.getCommunity() == null) {
+            throw new RuntimeException("Event must belong to a community");
+        }
 
-        // Initialize attendance if enabled
-        if (savedEvent.getAttendanceEnabled() && savedEvent.getGroup() != null) {
+        Event savedEvent = eventRepository.save(event);
+        globalShortCodeService.generateAndReserve(DatabaseType.EVENTS, savedEvent.getId());
+
+        // Initialize attendance automatically if enabled
+        if (savedEvent.getAttendanceEnabled()) {
             initializeAttendanceForEvent(savedEvent);
         }
 
@@ -91,18 +113,18 @@ public class EventService {
     }
 
     /**
-     * Get event by ID
+     * Get event by Code
      */
-    public EventDTO getEventById(UUID eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
+    public EventDTO getEventByCode(String eventCode) {
+        Event event = getEventEntityByCode(eventCode);
         return eventMapper.toDTO(event);
     }
 
     /**
      * Get events by community
      */
-    public List<EventDTO> getEventsByCommunity(UUID communityId) {
+    public List<EventDTO> getEventsByCommunity(String communityCode) {
+        UUID communityId = globalShortCodeService.getUUIDfromShortCode(DatabaseType.COMMUNITY, communityCode);
         List<Event> events = eventRepository.findByCommunityIdOrderByDateDesc(communityId);
         return events.stream()
                 .map(eventMapper::toDTO)
@@ -112,7 +134,8 @@ public class EventService {
     /**
      * Get events by group
      */
-    public List<EventDTO> getEventsByGroup(UUID groupId) {
+    public List<EventDTO> getEventsByGroup(String groupCode) {
+        UUID groupId = globalShortCodeService.getUUIDfromShortCode(DatabaseType.GROUP, groupCode);
         List<Event> events = eventRepository.findByGroupIdOrderByDateDesc(groupId);
         return events.stream()
                 .map(eventMapper::toDTO)
@@ -122,7 +145,8 @@ public class EventService {
     /**
      * Get upcoming events by community
      */
-    public List<EventDTO> getUpcomingEventsByCommunity(UUID communityId) {
+    public List<EventDTO> getUpcomingEventsByCommunity(String communityCode) {
+        UUID communityId = globalShortCodeService.getUUIDfromShortCode(DatabaseType.COMMUNITY, communityCode);
         List<Event> events = eventRepository.findUpcomingEventsByCommunityId(communityId, LocalDate.now());
         return events.stream()
                 .map(eventMapper::toDTO)
@@ -132,7 +156,8 @@ public class EventService {
     /**
      * Get upcoming events by group
      */
-    public List<EventDTO> getUpcomingEventsByGroup(UUID groupId) {
+    public List<EventDTO> getUpcomingEventsByGroup(String groupCode) {
+        UUID groupId = globalShortCodeService.getUUIDfromShortCode(DatabaseType.GROUP, groupCode);
         List<Event> events = eventRepository.findUpcomingEventsByGroupId(groupId, LocalDate.now());
         return events.stream()
                 .map(eventMapper::toDTO)
@@ -143,31 +168,20 @@ public class EventService {
      * Update event
      */
     @Transactional
-    public EventDTO updateEvent(UUID eventId, UUID userId, UpdateEventRequest request) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
+    public EventDTO updateEvent(String eventCode, String userCode, UpdateEventRequest request) {
+        Event event = getEventEntityByCode(eventCode);
+        User user = userService.getUserByShortCode(userCode);
 
         // Check authorization
-        if (!canManageEvent(userId, eventId)) {
-            throw new RuntimeException("You don't have permission to update this event");
+        if (!canManageEvent(user.getId(), event.getId())) {
+            throw new RuntimeException("Unauthorized to update this event");
         }
 
-        // Update fields if provided
-        if (request.getTitle() != null && !request.getTitle().isEmpty()) {
-            event.setTitle(request.getTitle());
-        }
-        if (request.getDescription() != null) {
-            event.setDescription(request.getDescription());
-        }
-        if (request.getEventDate() != null) {
-            event.setEventDate(request.getEventDate());
-        }
-        if (request.getEventTime() != null) {
-            event.setEventTime(request.getEventTime());
-        }
-        if (request.getLocation() != null) {
-            event.setLocation(request.getLocation());
-        }
+        if (request.getTitle() != null && !request.getTitle().isEmpty()) event.setTitle(request.getTitle());
+        if (request.getDescription() != null) event.setDescription(request.getDescription());
+        if (request.getEventDate() != null) event.setEventDate(request.getEventDate());
+        if (request.getEventTime() != null) event.setEventTime(request.getEventTime());
+        if (request.getLocation() != null) event.setLocation(request.getLocation());
 
         Event updatedEvent = eventRepository.save(event);
         return eventMapper.toDTO(updatedEvent);
@@ -177,35 +191,40 @@ public class EventService {
      * Delete event
      */
     @Transactional
-    public void deleteEvent(UUID eventId, UUID userId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
+    public void deleteEvent(String eventCode, String userCode) {
+        Event event = getEventEntityByCode(eventCode);
+        User user = userService.getUserByShortCode(userCode);
 
-        // Only creator can delete
-        if (!event.getCreatedBy().getId().equals(userId)) {
-            throw new RuntimeException("Only the creator can delete this event");
+        boolean isCommOwner = isCommunityOwner(user.getId(), event.getCommunity().getId());
+        boolean isCommAdmin = isCommunityAdmin(user.getId(), event.getCommunity().getId());
+        boolean isCreator = event.getCreatedBy().getId().equals(user.getId());
+
+        // Community Owner can delete any event in community
+        // Community Admin can delete group events where they are admin
+        // Creator can delete
+        if (isCommOwner || isCreator || (isCommAdmin && canManageEvent(user.getId(), event.getId()))) {
+            eventRepository.delete(event);
+        } else {
+            throw new RuntimeException("Unauthorized to delete this event");
         }
-
-        eventRepository.delete(event);
     }
 
     /**
      * Toggle attendance for event
      */
     @Transactional
-    public EventDTO toggleAttendance(UUID eventId, UUID userId, boolean enabled) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
+    public EventDTO toggleAttendance(String eventCode, String userCode, boolean enabled) {
+        Event event = getEventEntityByCode(eventCode);
+        User user = userService.getUserByShortCode(userCode);
 
-        if (!canManageEvent(userId, eventId)) {
-            throw new RuntimeException("You don't have permission to modify attendance");
+        if (!canManageEvent(user.getId(), event.getId())) {
+            throw new RuntimeException("Unauthorized to modify attendance");
         }
 
         event.setAttendanceEnabled(enabled);
         Event updatedEvent = eventRepository.save(event);
 
-        // Initialize attendance records if enabling and event has a group
-        if (enabled && event.getGroup() != null && event.getAttendances().isEmpty()) {
+        if (enabled && event.getAttendances().isEmpty()) {
             initializeAttendanceForEvent(event);
         }
 
@@ -216,24 +235,27 @@ public class EventService {
      * Mark attendance
      */
     @Transactional
-    public EventAttendanceDTO markAttendance(UUID eventId, UUID markerId, MarkAttendanceRequest request) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Event not found"));
+    public EventAttendanceDTO markAttendance(String eventCode, String markerCode, MarkAttendanceRequest request) {
+        Event event = getEventEntityByCode(eventCode);
+        User marker = userService.getUserByShortCode(markerCode);
 
         if (!event.getAttendanceEnabled()) {
-            throw new RuntimeException("Attendance is not enabled for this event");
+            throw new RuntimeException("Attendance is not enabled");
         }
 
-        User marker = userRepository.findById(markerId)
-                .orElseThrow(() -> new RuntimeException("Marker user not found"));
+        // Check if marker has permission
+        if (!canManageEvent(marker.getId(), event.getId())) {
+            throw new RuntimeException("Only admins can mark attendance");
+        }
 
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userService.getUserByShortCode(request.getUserCode());
+        Group groupTemp = null;
+        if (request.getGroupCode() != null) {
+            UUID groupId = globalShortCodeService.getUUIDfromShortCode(DatabaseType.GROUP, request.getGroupCode());
+            groupTemp = groupRepository.findById(groupId).orElse(null);
+        }
+        final Group group = groupTemp;
 
-        Group group = groupRepository.findById(request.getGroupId())
-                .orElseThrow(() -> new RuntimeException("Group not found"));
-
-        // Find or create attendance record
         EventAttendance attendance = attendanceRepository
                 .findByEventAndUserAndGroup(event, user, group)
                 .orElseGet(() -> {
@@ -255,94 +277,101 @@ public class EventService {
     /**
      * Get event attendance
      */
-    public List<EventAttendanceDTO> getEventAttendance(UUID eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Event not found"));
-
-        List<EventAttendance> attendances = attendanceRepository.findByEvent(event);
-        return attendances.stream()
-                .map(eventMapper::toAttendanceDTO)
-                .collect(Collectors.toList());
+    public List<EventAttendanceDTO> getEventAttendance(String eventCode) {
+        Event event = getEventEntityByCode(eventCode);
+        return attendanceRepository.findByEvent(event).stream()
+                .map(eventMapper::toAttendanceDTO).collect(Collectors.toList());
     }
 
     /**
-     * Get event attendance by group
+     * Get event attendance statistics
      */
-    public List<EventAttendanceDTO> getEventAttendanceByGroup(UUID eventId, UUID groupId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Event not found"));
-
-        Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("Group not found"));
-
-        List<EventAttendance> attendances = attendanceRepository.findByEventAndGroup(event, group);
-        return attendances.stream()
-                .map(eventMapper::toAttendanceDTO)
-                .collect(Collectors.toList());
+    public AttendanceStatsDTO getAttendanceStats(String eventCode) {
+        Event event = getEventEntityByCode(eventCode);
+        int total = attendanceRepository.findByEvent(event).size();
+        int present = attendanceRepository.countByEventAndStatus(event, AttendanceStatus.PRESENT);
+        int absent = attendanceRepository.countByEventAndStatus(event, AttendanceStatus.ABSENT);
+        int pending = attendanceRepository.countByEventAndStatus(event, AttendanceStatus.PENDING);
+        return new AttendanceStatsDTO(total, present, absent, pending);
     }
 
     /**
-     * Get attendance statistics
-     */
-    public AttendanceStatsDTO getAttendanceStats(UUID eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Event not found"));
-
-        int totalAttendance = attendanceRepository.findByEvent(event).size();
-        int presentCount = attendanceRepository.countByEventAndStatus(event, AttendanceStatus.PRESENT);
-        int absentCount = attendanceRepository.countByEventAndStatus(event, AttendanceStatus.ABSENT);
-        int pendingCount = attendanceRepository.countByEventAndStatus(event, AttendanceStatus.PENDING);
-
-        return new AttendanceStatsDTO(totalAttendance, presentCount, absentCount, pendingCount);
-    }
-
-    /**
-     * Initialize attendance records for all group members
+     * Initialize attendance records for all members (Group or Community)
      */
     @Transactional
     public void initializeAttendanceForEvent(Event event) {
-        if (event.getGroup() == null) {
-            return;
-        }
-
-        List<GroupMembership> memberships = groupMembershipRepository.findByGroup(event.getGroup());
-
-        for (GroupMembership membership : memberships) {
-            if (!attendanceRepository.existsByEventIdAndUserIdAndGroupId(
-                    event.getId(), membership.getUser().getId(), event.getGroup().getId())) {
-                EventAttendance attendance = new EventAttendance();
-                attendance.setEvent(event);
-                attendance.setUser(membership.getUser());
-                attendance.setGroup(event.getGroup());
-                attendance.setStatus(AttendanceStatus.PENDING);
-                attendanceRepository.save(attendance);
+        if (event.getGroup() != null) {
+            // Group event
+            List<GroupMembership> memberships = groupMembershipRepository.findByGroupIdAndStatus(event.getGroup().getId(), MembershipStatus.ACCEPTED);
+            for (GroupMembership membership : memberships) {
+                createAttendanceIfNotExist(event, membership.getUser(), event.getGroup());
             }
+        } else {
+            // Community-wide event (Notice)
+            List<CommunityMembership> memberships = communityMembershipRepository.findByCommunityIdAndStatus(event.getCommunity().getId(), MembershipStatus.ACCEPTED);
+            for (CommunityMembership membership : memberships) {
+                createAttendanceIfNotExist(event, membership.getUser(), null);
+            }
+        }
+    }
+
+    private void createAttendanceIfNotExist(Event event, User user, Group group) {
+        if (!attendanceRepository.existsByEventIdAndUserIdAndGroupId(event.getId(), user.getId(), group != null ? group.getId() : null)) {
+            EventAttendance attendance = new EventAttendance();
+            attendance.setEvent(event);
+            attendance.setUser(user);
+            attendance.setGroup(group);
+            attendance.setStatus(AttendanceStatus.PENDING);
+            attendanceRepository.save(attendance);
         }
     }
 
     // Helper methods
+    private Event getEventEntityByCode(String eventCode) {
+        UUID eventId = globalShortCodeService.getUUIDfromShortCode(DatabaseType.EVENTS, eventCode);
+        return eventRepository.findById(eventId).orElseThrow(() -> new RuntimeException("Event not found"));
+    }
+
     private boolean canManageEvent(UUID userId, UUID eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Event not found"));
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> new RuntimeException("Event not found"));
+        
+        // Community Owner can manage everything
+        if (isCommunityOwner(userId, event.getCommunity().getId())) return true;
+        
+        // Creator can manage
+        if (event.getCreatedBy().getId().equals(userId)) return true;
 
-        // Creator can always manage
-        if (event.getCreatedBy().getId().equals(userId)) {
-            return true;
-        }
-
-        // Group admins/owners can manage group events
         if (event.getGroup() != null) {
-            Group group = event.getGroup();
-            Set<GroupMembership> memberships = group.getMemberships();
-            for(GroupMembership membership: memberships) {
-                if(membership.getUser().getId().equals(userId)) {
-                    if(membership.getRole().equals(MemberRole.ADMIN) || membership.getRole().equals(MemberRole.OWNER)) {
-                        return true;
-                    }
-                }
-            }
+            // Group Admin/Owner can manage
+            return groupMembershipRepository.findByUserIdAndGroupIdAndStatus(userId, event.getGroup().getId(), MembershipStatus.ACCEPTED)
+                    .map(m -> m.getRole() == MemberRole.ADMIN || m.getRole() == MemberRole.OWNER)
+                    .orElse(false);
+        } else {
+            // Community Admin can manage community events
+            return isCommunityAdmin(userId, event.getCommunity().getId());
         }
+    }
 
-        return false;
+    private boolean isCommunityOwner(UUID userId, UUID communityId) {
+        return communityMembershipRepository.findByUserIdAndCommunityIdAndStatus(userId, communityId, MembershipStatus.ACCEPTED)
+                .map(m -> m.getRole() == MemberRole.OWNER).orElse(false);
+    }
+
+    private boolean isCommunityAdmin(UUID userId, UUID communityId) {
+        return communityMembershipRepository.findByUserIdAndCommunityIdAndStatus(userId, communityId, MembershipStatus.ACCEPTED)
+                .map(m -> m.getRole() == MemberRole.ADMIN).orElse(false);
+    }
+
+    private boolean isCommunityAdminOrOwner(UUID userId, UUID communityId) {
+        return communityMembershipRepository.findByUserIdAndCommunityIdAndStatus(userId, communityId, MembershipStatus.ACCEPTED)
+                .map(m -> m.getRole() == MemberRole.OWNER || m.getRole() == MemberRole.ADMIN).orElse(false);
+    }
+
+    public List<EventAttendanceDTO> getEventAttendanceByGroup(String eventCode, String groupCode) {
+        List<EventAttendanceDTO> eventAttendanceDTOS = getEventAttendance(eventCode);
+
+        return eventAttendanceDTOS.stream()
+                .filter(dto -> dto.getGroupCode() != null && dto.getGroupCode().equals(groupCode))
+                .toList(); // or collect(Collectors.toList()) if using Java < 16
     }
 }

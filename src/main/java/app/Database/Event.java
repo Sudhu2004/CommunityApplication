@@ -15,11 +15,14 @@ import java.util.UUID;
 @Table(name = "events")
 public class Event {
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue
+    @org.hibernate.annotations.UuidGenerator
     private UUID id;
 
+    @Column(nullable = false)
     private String title;
+    
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @ManyToOne
@@ -40,6 +43,9 @@ public class Event {
 
     @Column(nullable = false)
     private Boolean attendanceEnabled = false;
+
+    @Column(nullable = false)
+    private Boolean isNotice = false;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -135,6 +141,14 @@ public class Event {
 
     public void setAttendanceEnabled(Boolean attendanceEnabled) {
         this.attendanceEnabled = attendanceEnabled;
+    }
+
+    public Boolean getIsNotice() {
+        return isNotice;
+    }
+
+    public void setIsNotice(Boolean isNotice) {
+        this.isNotice = isNotice;
     }
 
     public LocalDateTime getCreatedAt() {

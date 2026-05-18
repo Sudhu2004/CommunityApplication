@@ -14,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/communities")
@@ -36,12 +35,12 @@ public class CommunityController {
     }
 
     /**
-     * GET /api/communities/{communityId}
+     * GET /api/communities/{communityCode}
      * Get a community by ID
      */
-    @GetMapping("/{communityId}")
-    public ResponseEntity<CommunityDTO> getCommunity(@PathVariable UUID communityId) {
-        CommunityDTO community = communityService.getCommunityById(communityId);
+    @GetMapping("/{communityCode}")
+    public ResponseEntity<CommunityDTO> getCommunity(@PathVariable String communityCode) {
+        CommunityDTO community = communityService.getCommunityByCode(communityCode);
         return ResponseEntity.ok(community);
     }
 
@@ -67,115 +66,177 @@ public class CommunityController {
     }
 
     /**
-     * GET /api/communities/created-by/{userId}
+     * GET /api/communities/created-by/{userCode}
      * Get communities created by a user
      */
-    @GetMapping("/created-by/{userId}")
+    @GetMapping("/created-by/{userCode}")
     public ResponseEntity<List<CommunityDTO>> getCommunitiesByCreator(
-            @PathVariable UUID userId) {
-        List<CommunityDTO> communities = communityService.getCommunitiesByCreator(userId);
+            @PathVariable String userCode) {
+        List<CommunityDTO> communities = communityService.getCommunitiesByCreator(userCode);
         return ResponseEntity.ok(communities);
     }
 
     /**
-     * GET /api/communities/user/{userId}
+     * GET /api/communities/user/{userCode}
      * Get communities where user is a member
      */
-    @GetMapping("/user/{userId}")
+    @GetMapping("/user/{userCode}")
     public ResponseEntity<List<CommunityDTO>> getUserCommunities(
-            @PathVariable UUID userId) {
-        List<CommunityDTO> communities = communityService.getUserCommunities(userId);
+            @PathVariable String userCode) {
+        List<CommunityDTO> communities = communityService.getUserCommunities(userCode);
         return ResponseEntity.ok(communities);
     }
 
     /**
-     * PUT /api/communities/{communityId}
+     * PUT /api/communities/{communityCode}
      * Update a community
      */
-    @PutMapping("/{communityId}")
+    @PutMapping("/{communityCode}")
     public ResponseEntity<CommunityDTO> updateCommunity(
-            @PathVariable UUID communityId,
+            @PathVariable String communityCode,
             @Valid @RequestBody UpdateCommunityRequest request,
-            @RequestHeader("User-Id") UUID userId) {
-        CommunityDTO community = communityService.updateCommunity(communityId, userId, request);
+            @RequestHeader("userCode") String userCode) {
+        CommunityDTO community = communityService.updateCommunity(communityCode, userCode, request);
         return ResponseEntity.ok(community);
     }
 
     /**
-     * DELETE /api/communities/{communityId}
+     * DELETE /api/communities/{communityCode}
      * Delete a community
      */
-    @DeleteMapping("/{communityId}")
+    @DeleteMapping("/{communityCode}")
     public ResponseEntity<Void> deleteCommunity(
-            @PathVariable UUID communityId,
-            @RequestHeader("User-Id") UUID userId) {
-        communityService.deleteCommunity(communityId, userId);
+            @PathVariable String communityCode,
+            @RequestHeader("userCode") String userCode) {
+        communityService.deleteCommunity(communityCode, userCode);
         return ResponseEntity.noContent().build();
     }
 
     // ========== MEMBERSHIP ENDPOINTS ==========
 
     /**
-     * POST /api/communities/{communityId}/members
-     * Add a member to the community
+     * POST /api/communities/{communityCode}/request-join
+     * Request to join community
      */
-    @PostMapping("/{communityId}/members")
-    public ResponseEntity<CommunityMembershipDTO> addMember(
-            @PathVariable UUID communityId,
-            @Valid @RequestBody AddMemberRequest request,
-            @RequestHeader("User-Id") UUID userId) {
-        CommunityMembershipDTO membership = communityService.addMember(communityId, userId, request);
+    @PostMapping("/{communityCode}/request-join")
+    public ResponseEntity<CommunityMembershipDTO> requestToJoin(
+            @PathVariable String communityCode,
+            @RequestHeader("userCode") String userCode) {
+        CommunityMembershipDTO membership = communityService.requestToJoin(communityCode, userCode);
         return ResponseEntity.status(HttpStatus.CREATED).body(membership);
     }
 
     /**
-     * GET /api/communities/{communityId}/members
+     * POST /api/communities/{communityCode}/approve/{targetUserCode}
+     * Approve join request
+     */
+    @PostMapping("/{communityCode}/approve/{targetUserCode}")
+    public ResponseEntity<CommunityMembershipDTO> approveRequest(
+            @PathVariable String communityCode,
+            @PathVariable String targetUserCode,
+            @RequestHeader("userCode") String userCode) {
+        CommunityMembershipDTO membership = communityService.approveRequest(communityCode, userCode, targetUserCode);
+        return ResponseEntity.ok(membership);
+    }
+
+    /**
+     * POST /api/communities/{communityCode}/reject/{targetUserCode}
+     * Reject join request
+     */
+    @PostMapping("/{communityCode}/reject/{targetUserCode}")
+    public ResponseEntity<Void> rejectRequest(
+            @PathVariable String communityCode,
+            @PathVariable String targetUserCode,
+            @RequestHeader("userCode") String userCode) {
+        communityService.rejectRequest(communityCode, userCode, targetUserCode);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * POST /api/communities/{communityCode}/invite
+     * Invite a member to the community
+     */
+    @PostMapping("/{communityCode}/invite")
+    public ResponseEntity<CommunityMembershipDTO> inviteMember(
+            @PathVariable String communityCode,
+            @Valid @RequestBody AddMemberRequest request,
+            @RequestHeader("userCode") String userCode) {
+        CommunityMembershipDTO membership = communityService.inviteMember(communityCode, userCode, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(membership);
+    }
+
+    /**
+     * POST /api/communities/{communityCode}/accept-invite
+     * Accept community invitation
+     */
+    @PostMapping("/{communityCode}/accept-invite")
+    public ResponseEntity<CommunityMembershipDTO> acceptInvitation(
+            @PathVariable String communityCode,
+            @RequestHeader("userCode") String userCode) {
+        CommunityMembershipDTO membership = communityService.acceptInvitation(communityCode, userCode);
+        return ResponseEntity.ok(membership);
+    }
+
+    /**
+     * GET /api/communities/{communityCode}/pending-requests
+     * Get all pending join requests
+     */
+    @GetMapping("/{communityCode}/pending-requests")
+    public ResponseEntity<List<CommunityMembershipDTO>> getPendingRequests(
+            @PathVariable String communityCode,
+            @RequestParam String userCode) {
+        List<CommunityMembershipDTO> requests = communityService.getPendingRequests(communityCode, userCode);
+        return ResponseEntity.ok(requests);
+    }
+
+    /**
+     * GET /api/communities/{communityCode}/members
      * Get all members of a community
      */
-    @GetMapping("/{communityId}/members")
+    @GetMapping("/{communityCode}/members")
     public ResponseEntity<List<CommunityMembershipDTO>> getCommunityMembers(
-            @PathVariable UUID communityId) {
-        List<CommunityMembershipDTO> members = communityService.getCommunityMembers(communityId);
+            @PathVariable String communityCode) {
+        List<CommunityMembershipDTO> members = communityService.getCommunityMembers(communityCode);
         return ResponseEntity.ok(members);
     }
 
     /**
-     * GET /api/communities/{communityId}/members/{userId}
+     * GET /api/communities/{communityCode}/members/{userCode}
      * Get a specific user's membership in the community
      */
-    @GetMapping("/{communityId}/members/{userId}")
+    @GetMapping("/{communityCode}/members/{userCode}")
     public ResponseEntity<CommunityMembershipDTO> getUserMembership(
-            @PathVariable UUID communityId,
-            @PathVariable UUID userId) {
-        CommunityMembershipDTO membership = communityService.getUserMembership(communityId, userId);
+            @PathVariable String communityCode,
+            @PathVariable String userCode) {
+        CommunityMembershipDTO membership = communityService.getUserMembership(communityCode, userCode);
         return ResponseEntity.ok(membership);
     }
 
     /**
-     * PUT /api/communities/{communityId}/members/{memberId}/role
+     * PUT /api/communities/{communityCode}/members/{memberCode}/role
      * Update a member's role
      */
-    @PutMapping("/{communityId}/members/{memberId}/role")
+    @PutMapping("/{communityCode}/members/{memberCode}/role")
     public ResponseEntity<CommunityMembershipDTO> updateMemberRole(
-            @PathVariable UUID communityId,
-            @PathVariable UUID memberId,
+            @PathVariable String communityCode,
+            @PathVariable String memberCode,
             @RequestBody MemberRole newRole,
-            @RequestHeader("User-Id") UUID userId) {
+            @RequestHeader("userCode") String userCode) {
         CommunityMembershipDTO membership = communityService.updateMemberRole(
-                communityId, userId, memberId, newRole);
+                communityCode, userCode, memberCode, newRole);
         return ResponseEntity.ok(membership);
     }
 
     /**
-     * DELETE /api/communities/{communityId}/members/{memberId}
+     * DELETE /api/communities/{communityCode}/members/{memberCode}
      * Remove a member from the community
      */
-    @DeleteMapping("/{communityId}/members/{memberId}")
+    @DeleteMapping("/{communityCode}/members/{memberCode}")
     public ResponseEntity<Void> removeMember(
-            @PathVariable UUID communityId,
-            @PathVariable UUID memberId,
-            @RequestHeader("User-Id") UUID userId) {
-        communityService.removeMember(communityId, userId, memberId);
+            @PathVariable String communityCode,
+            @PathVariable String memberCode,
+            @RequestHeader("userCode") String userCode) {
+        communityService.removeMember(communityCode, userCode, memberCode);
         return ResponseEntity.noContent().build();
     }
 }

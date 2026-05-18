@@ -9,11 +9,11 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "event_attendance",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"event_id", "user_id", "group_id"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"event_id", "user_id"}))
 public class EventAttendance {
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue
+    @org.hibernate.annotations.UuidGenerator
     private UUID id;
 
     @ManyToOne
@@ -25,7 +25,7 @@ public class EventAttendance {
     private User user;
 
     @ManyToOne
-    @JoinColumn(name = "group_id", nullable = false)
+    @JoinColumn(name = "group_id")
     private Group group;
 
     @Enumerated(EnumType.STRING)

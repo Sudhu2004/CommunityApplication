@@ -3,6 +3,7 @@ package app.Repository;
 import app.Database.Group;
 import app.Database.GroupMembership;
 import app.Database.MemberRole;
+import app.Database.MembershipStatus;
 import app.Database.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,11 +20,20 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
     // Check if user is member of a group
     Optional<GroupMembership> findByUserAndGroup(User user, Group group);
 
-    // Alternative with IDs
     Optional<GroupMembership> findByUserIdAndGroupId(UUID userId, UUID groupId);
+
+    Optional<GroupMembership> findByUserIdAndGroupIdAndStatus(UUID userId, UUID groupId, MembershipStatus status);
 
     // Check if membership exists
     boolean existsByUserIdAndGroupId(UUID userId, UUID groupId);
+
+    boolean existsByUserIdAndGroupIdAndStatus(UUID userId, UUID groupId, MembershipStatus status);
+
+    List<GroupMembership> findByGroupAndStatus(Group group, MembershipStatus status);
+
+    List<GroupMembership> findByGroupIdAndStatus(UUID groupId, MembershipStatus status);
+
+    List<GroupMembership> findByUserIdAndStatus(UUID userId, MembershipStatus status);
 
     // Get all members of a group
     List<GroupMembership> findByGroup(Group group);

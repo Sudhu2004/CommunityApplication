@@ -20,7 +20,6 @@ public class UserMapper {
         }
 
         UserDTO dto = new UserDTO();
-        dto.setId(user.getId());
         dto.setEmail(user.getEmail());
         dto.setName(user.getName());
         dto.setPhone(user.getPhone());
@@ -28,22 +27,7 @@ public class UserMapper {
         dto.setCreatedAt(user.getCreatedAt());
         dto.setUpdatedAt(user.getUpdatedAt());
         dto.setActive(user.getActive());
-
+        dto.setUserCode(globalShortCodeService.getShortCode(DatabaseType.USER, user.getId()));
         return dto;
-    }
-
-    public User toEntity(UserDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-
-        User user = new User();
-        user.setId(dto.getId());
-        user.setEmail(dto.getEmail());
-        user.setName(dto.getName());
-        user.setPhone(dto.getPhone());
-        user.setProfilePhotoUrl(dto.getProfilePhotoUrl());
-        user.setActive(dto.getActive());
-        return user;
     }
 }

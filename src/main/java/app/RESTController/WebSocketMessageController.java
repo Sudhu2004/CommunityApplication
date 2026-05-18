@@ -20,65 +20,57 @@ public class WebSocketMessageController {
     @Autowired
     private MessageService messageService;
 
+    @Autowired
     private SimpMessageSendingOperations messagingTemplate;
 
     /**
-     * Send a message to an event
-     * Client sends to: /app/event/{eventId}/send
-     * Broadcasts to: /topic/event/{eventId}/messages
+     * Send a message to a community (Notices)
+     * Client sends to: /app/community/{communityCode}/send
      */
-    @MessageMapping("/event/{eventId}/send")
-    public void sendMessage(
-            @DestinationVariable UUID eventId,
+    @MessageMapping("/community/{communityCode}/send")
+    public void sendCommunityMessage(
+            @DestinationVariable String communityCode,
             @Payload CreateMessageRequest request,
             SimpMessageHeaderAccessor headerAccessor) {
+        processMessage(null, communityCode, request, headerAccessor);
+    }
 
+    /**
+     * Send a message to an event
+     * Client sends to: /app/event/{eventCode}/send
+     */
+    @MessageMapping("/event/{eventCode}/send")
+    public void sendMessage(
+            @DestinationVariable String eventCode,
+            @Payload CreateMessageRequest request,
+            SimpMessageHeaderAccessor headerAccessor) {
+        processMessage(eventCode, null, request, headerAccessor);
+    }
+
+    private void processMessage(String eventCode, String communityCode,
+                                CreateMessageRequest request, SimpMessageHeaderAccessor headerAccessor) {
         try {
-            // Get user ID from session attributes
-            UUID userId = (UUID) headerAccessor.getSessionAttributes().get("userId");
+            String userCode = (String) headerAccessor.getSessionAttributes().get("userCode");
+            if (userCode == null) throw new RuntimeException("User not authenticated");
 
-            if (userId == null) {
-                throw new RuntimeException("User not authenticated");
-            }
+            request.setEventCode(eventCode);
+            request.setCommunityCode(communityCode);
+            request.setGroupCode(null); // Explicitly null for consistency
 
-            // Set the event ID from the path
-            request.setEventId(eventId);
-
-            // Create the message
-            MessageDTO savedMessage = messageService.createMessage(request, userId);
-
-            // Broadcast to all subscribers of this event
-            messagingTemplate.convertAndSend(
-                    "/topic/event/" + eventId + "/messages",
-                    savedMessage
-            );
-
+            messageService.createMessage(request, userCode);
         } catch (Exception e) {
-            // Send error to the specific user
-            messagingTemplate.convertAndSendToUser(
-                    headerAccessor.getUser().getName(),
-                    "/queue/errors",
-                    "Error sending message: " + e.getMessage()
-            );
+            if (headerAccessor.getUser() != null) {
+                messagingTemplate.convertAndSendToUser(
+                        headerAccessor.getUser().getName(),
+                        "/queue/errors",
+                        "Error sending message: " + e.getMessage()
+                );
+            }
         }
     }
 
     /**
-     * User typing indicator
-     * Client sends to: /app/event/{eventId}/typing
-     * Broadcasts to: /topic/event/{eventId}/typing
-     */
-    @MessageMapping("/event/{eventId}/typing")
-    @SendTo("/topic/event/{eventId}/typing")
-    public TypingNotification handleTyping(
-            @DestinationVariable UUID eventId,
-            @Payload TypingNotification notification) {
-        return notification;
-    }
-
-    /**
      * Delete a message
-     * Client sends to: /app/message/{messageId}/delete
      */
     @MessageMapping("/message/{messageId}/delete")
     public void deleteMessage(
@@ -86,54 +78,52 @@ public class WebSocketMessageController {
             SimpMessageHeaderAccessor headerAccessor) {
 
         try {
-            UUID userId = (UUID) headerAccessor.getSessionAttributes().get("userId");
+            String userCode = (String) headerAccessor.getSessionAttributes().get("userCode");
+            if (userCode == null) throw new RuntimeException("User not authenticated");
 
-            if (userId == null) {
-                throw new RuntimeException("User not authenticated");
+            MessageDTO message = messageService.getMessageById(messageId);
+            messageService.deleteMessage(messageId, userCode);
+
+            String topic = null;
+            if (message.getEventCode() != null) topic = "/topic/event/" + message.getEventCode() + "/messages";
+            else if (message.getCommunityCode() != null) topic = "/topic/community/" + message.getCommunityCode() + "/messages";
+
+            if (topic != null) {
+                messagingTemplate.convertAndSend(topic + "/deleted", new MessageDeletedNotification(messageId, userCode));
             }
 
-            // Get the message to find its event ID
-            MessageDTO message = messageService.getMessageById(messageId);
-
-            // Delete the message
-            messageService.deleteMessage(messageId, userId);
-
-            // Notify all subscribers
-            messagingTemplate.convertAndSend(
-                    "/topic/event/" + message.getEventId() + "/message-deleted",
-                    new MessageDeletedNotification(messageId, userId)
-            );
-
         } catch (Exception e) {
-            messagingTemplate.convertAndSendToUser(
-                    headerAccessor.getUser().getName(),
-                    "/queue/errors",
-                    "Error deleting message: " + e.getMessage()
-            );
+            if (headerAccessor.getUser() != null) {
+                messagingTemplate.convertAndSendToUser(
+                        headerAccessor.getUser().getName(),
+                        "/queue/errors",
+                        "Error deleting message: " + e.getMessage()
+                );
+            }
         }
     }
 
     // DTO for typing notifications
     public static class TypingNotification {
-        private UUID userId;
+        private String userCode;
         private String userName;
         private boolean isTyping;
 
         public TypingNotification() {
         }
 
-        public TypingNotification(UUID userId, String userName, boolean isTyping) {
-            this.userId = userId;
+        public TypingNotification(String userCode, String userName, boolean isTyping) {
+            this.userCode = userCode;
             this.userName = userName;
             this.isTyping = isTyping;
         }
 
-        public UUID getUserId() {
-            return userId;
+        public String getUserCode() {
+            return userCode;
         }
 
-        public void setUserId(UUID userId) {
-            this.userId = userId;
+        public void setUserCode(String userCode) {
+            this.userCode = userCode;
         }
 
         public String getUserName() {
@@ -156,14 +146,14 @@ public class WebSocketMessageController {
     // DTO for message deletion notifications
     public static class MessageDeletedNotification {
         private UUID messageId;
-        private UUID deletedBy;
+        private String userCode;
 
         public MessageDeletedNotification() {
         }
 
-        public MessageDeletedNotification(UUID messageId, UUID deletedBy) {
+        public MessageDeletedNotification(UUID messageId, String userCode) {
             this.messageId = messageId;
-            this.deletedBy = deletedBy;
+            this.userCode = userCode;
         }
 
         public UUID getMessageId() {
@@ -174,12 +164,12 @@ public class WebSocketMessageController {
             this.messageId = messageId;
         }
 
-        public UUID getDeletedBy() {
-            return deletedBy;
+        public String getUserCode() {
+            return userCode;
         }
 
-        public void setDeletedBy(UUID deletedBy) {
-            this.deletedBy = deletedBy;
+        public void setUserCode(String userCode) {
+            this.userCode = userCode;
         }
     }
 }

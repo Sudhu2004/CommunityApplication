@@ -7,10 +7,10 @@ import java.util.UUID;
 
 public class EventAttendanceDTO {
     private UUID id;
-    private UUID eventId;
+    private String eventCode;
     private String eventTitle;
     private UserDTO user;
-    private UUID groupId;
+    private String groupCode;
     private String groupName;
     private AttendanceStatus status;
     private UserDTO markedBy;
@@ -24,8 +24,8 @@ public class EventAttendanceDTO {
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 
-    public UUID getEventId() { return eventId; }
-    public void setEventId(UUID eventId) { this.eventId = eventId; }
+    public String getEventCode() { return eventCode; }
+    public void setEventCode(String eventCode) { this.eventCode = eventCode; }
 
     public String getEventTitle() { return eventTitle; }
     public void setEventTitle(String eventTitle) { this.eventTitle = eventTitle; }
@@ -33,8 +33,8 @@ public class EventAttendanceDTO {
     public UserDTO getUser() { return user; }
     public void setUser(UserDTO user) { this.user = user; }
 
-    public UUID getGroupId() { return groupId; }
-    public void setGroupId(UUID groupId) { this.groupId = groupId; }
+    public String getGroupCode() { return groupCode; }
+    public void setGroupCode(String groupCode) { this.groupCode = groupCode; }
 
     public String getGroupName() { return groupName; }
     public void setGroupName(String groupName) { this.groupName = groupName; }

@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.UUID;
 
 public class CreateEventRequest {
 
@@ -16,9 +15,9 @@ public class CreateEventRequest {
     @Size(max = 2000, message = "Description must be less than 2000 characters")
     private String description;
 
-    private UUID communityId; // Optional - can be community-wide event
+    private String communityCode; // Optional - can be community-wide event
 
-    private UUID groupId; // Optional - can be group-specific event
+    private String groupCode; // Optional - can be group-specific event
 
     @NotNull(message = "Event date is required")
     private LocalDate eventDate;
@@ -40,11 +39,11 @@ public class CreateEventRequest {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    public UUID getCommunityId() { return communityId; }
-    public void setCommunityId(UUID communityId) { this.communityId = communityId; }
+    public String getCommunityCode() { return communityCode; }
+    public void setCommunityCode(String communityCode) { this.communityCode = communityCode; }
 
-    public UUID getGroupId() { return groupId; }
-    public void setGroupId(UUID groupId) { this.groupId = groupId; }
+    public String getGroupCode() { return groupCode; }
+    public void setGroupCode(String groupCode) { this.groupCode = groupCode; }
 
     public LocalDate getEventDate() { return eventDate; }
     public void setEventDate(LocalDate eventDate) { this.eventDate = eventDate; }

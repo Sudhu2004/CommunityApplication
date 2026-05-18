@@ -1,8 +1,10 @@
 package app.DTO.Event;
 
+import app.Database.DatabaseType;
 import app.Database.Event;
 import app.Database.EventAttendance;
 import app.DTO.User.UserMapper;
+import app.Service.GlobalShortCodeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -10,10 +12,12 @@ import org.springframework.stereotype.Component;
 public class EventMapper {
 
     private final UserMapper userMapper;
+    private final GlobalShortCodeService globalShortCodeService;
 
     @Autowired
-    public EventMapper(UserMapper userMapper) {
+    public EventMapper(UserMapper userMapper, GlobalShortCodeService globalShortCodeService) {
         this.userMapper = userMapper;
+        this.globalShortCodeService = globalShortCodeService;
     }
 
     public EventDTO toDTO(Event event) {
@@ -22,17 +26,16 @@ public class EventMapper {
         }
 
         EventDTO dto = new EventDTO();
-        dto.setId(event.getId());
         dto.setTitle(event.getTitle());
         dto.setDescription(event.getDescription());
 
         if (event.getCommunity() != null) {
-            dto.setCommunityId(event.getCommunity().getId());
+            dto.setCommunityCode(globalShortCodeService.getShortCode(DatabaseType.COMMUNITY, event.getCommunity().getId()));
             dto.setCommunityName(event.getCommunity().getName());
         }
 
         if (event.getGroup() != null) {
-            dto.setGroupId(event.getGroup().getId());
+            dto.setGroupCode(globalShortCodeService.getShortCode(DatabaseType.GROUP, event.getGroup().getId()));
             dto.setGroupName(event.getGroup().getName());
         }
 
@@ -41,12 +44,15 @@ public class EventMapper {
         dto.setEventTime(event.getEventTime());
         dto.setLocation(event.getLocation());
         dto.setAttendanceEnabled(event.getAttendanceEnabled());
+        dto.setIsNotice(event.getIsNotice());
         dto.setCreatedAt(event.getCreatedAt());
         dto.setUpdatedAt(event.getUpdatedAt());
 
         // Set counts
         dto.setMessageCount(event.getMessages() != null ? event.getMessages().size() : 0);
         dto.setAttendanceCount(event.getAttendances() != null ? event.getAttendances().size() : 0);
+
+        dto.setEventCode(globalShortCodeService.getShortCode(DatabaseType.EVENTS, event.getId()));
 
         return dto;
     }
@@ -58,11 +64,15 @@ public class EventMapper {
 
         EventAttendanceDTO dto = new EventAttendanceDTO();
         dto.setId(attendance.getId());
-        dto.setEventId(attendance.getEvent().getId());
+        dto.setEventCode(globalShortCodeService.getShortCode(DatabaseType.EVENTS, attendance.getEvent().getId()));
         dto.setEventTitle(attendance.getEvent().getTitle());
         dto.setUser(userMapper.toDTO(attendance.getUser()));
-        dto.setGroupId(attendance.getGroup().getId());
-        dto.setGroupName(attendance.getGroup().getName());
+
+        if (attendance.getGroup() != null) {
+            dto.setGroupCode(globalShortCodeService.getShortCode(DatabaseType.GROUP, attendance.getGroup().getId()));
+            dto.setGroupName(attendance.getGroup().getName());
+        }
+
         dto.setStatus(attendance.getStatus());
 
         if (attendance.getMarkedBy() != null) {

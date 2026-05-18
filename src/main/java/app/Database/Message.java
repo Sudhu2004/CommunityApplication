@@ -15,19 +15,28 @@ import java.util.UUID;
 public class Message {
 
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue
+    @org.hibernate.annotations.UuidGenerator
     private UUID id;
 
     @ManyToOne
-    @JoinColumn(name = "event_id", nullable = false)
+    @JoinColumn(name = "event_id")
     private Event event;
+
+    @ManyToOne
+    @JoinColumn(name = "community_id")
+    private Community community;
+
+    @ManyToOne
+    @JoinColumn(name = "group_id")
+    private Group group;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User sender;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private MessageType type;
 
     @Column(columnDefinition = "TEXT")
@@ -70,6 +79,22 @@ public class Message {
 
     public void setEvent(Event event) {
         this.event = event;
+    }
+
+    public Community getCommunity() {
+        return community;
+    }
+
+    public void setCommunity(Community community) {
+        this.community = community;
+    }
+
+    public Group getGroup() {
+        return group;
+    }
+
+    public void setGroup(Group group) {
+        this.group = group;
     }
 
     public User getSender() {

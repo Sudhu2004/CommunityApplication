@@ -8,8 +8,10 @@ import java.util.UUID;
 
 public class MessageDTO {
     private UUID id;
-    private UUID eventId;
-    private UUID senderId;
+    private String eventCode;
+    private String communityCode;
+    private String groupCode;
+    private String userCode;
     private String senderName;
     private String senderProfilePhotoUrl;
     private MessageType type;
@@ -21,12 +23,12 @@ public class MessageDTO {
     public MessageDTO() {
     }
 
-    public MessageDTO(UUID id, UUID eventId, UUID senderId, String senderName,
+    public MessageDTO(UUID id, String eventCode, String userCode, String senderName,
                       String senderProfilePhotoUrl, MessageType type, String content,
                       LocalDateTime createdAt, LocalDateTime updatedAt, List<MediaDTO> mediaList) {
         this.id = id;
-        this.eventId = eventId;
-        this.senderId = senderId;
+        this.eventCode = eventCode;
+        this.userCode = userCode;
         this.senderName = senderName;
         this.senderProfilePhotoUrl = senderProfilePhotoUrl;
         this.type = type;
@@ -45,20 +47,36 @@ public class MessageDTO {
         this.id = id;
     }
 
-    public UUID getEventId() {
-        return eventId;
+    public String getEventCode() {
+        return eventCode;
     }
 
-    public void setEventId(UUID eventId) {
-        this.eventId = eventId;
+    public void setEventCode(String eventCode) {
+        this.eventCode = eventCode;
     }
 
-    public UUID getSenderId() {
-        return senderId;
+    public String getCommunityCode() {
+        return communityCode;
     }
 
-    public void setSenderId(UUID senderId) {
-        this.senderId = senderId;
+    public void setCommunityCode(String communityCode) {
+        this.communityCode = communityCode;
+    }
+
+    public String getGroupCode() {
+        return groupCode;
+    }
+
+    public void setGroupCode(String groupCode) {
+        this.groupCode = groupCode;
+    }
+
+    public String getUserCode() {
+        return userCode;
+    }
+
+    public void setUserCode(String userCode) {
+        this.userCode = userCode;
     }
 
     public String getSenderName() {

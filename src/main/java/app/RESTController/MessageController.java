@@ -24,9 +24,9 @@ public class MessageController {
     @PostMapping
     public ResponseEntity<MessageDTO> createMessage(
             @Valid @RequestBody CreateMessageRequest request,
-            @RequestHeader("X-User-Id") UUID userId) {
+            @RequestHeader("userCode") String userCode) {
         try {
-            MessageDTO message = messageService.createMessage(request, userId);
+            MessageDTO message = messageService.createMessage(request, userCode);
             return ResponseEntity.status(HttpStatus.CREATED).body(message);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -43,41 +43,62 @@ public class MessageController {
         }
     }
 
-    @GetMapping("/event/{eventId}")
-    public ResponseEntity<Page<MessageDTO>> getMessagesByEventId(
-            @PathVariable UUID eventId,
+    @GetMapping("/event/{eventCode}")
+    public ResponseEntity<Page<MessageDTO>> getMessagesByEventCode(
+            @PathVariable String eventCode,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
-        Page<MessageDTO> messages = messageService.getMessagesByEventId(eventId, page, size);
+        Page<MessageDTO> messages = messageService.getMessagesByEventCode(eventCode, page, size);
         return ResponseEntity.ok(messages);
     }
 
-    @GetMapping("/event/{eventId}/all")
-    public ResponseEntity<List<MessageDTO>> getAllMessagesByEventId(@PathVariable UUID eventId) {
-        List<MessageDTO> messages = messageService.getAllMessagesByEventId(eventId);
+    @GetMapping("/event/{eventCode}/all")
+    public ResponseEntity<List<MessageDTO>> getAllMessagesByEventCode(@PathVariable String eventCode) {
+        List<MessageDTO> messages = messageService.getAllMessagesByEventCode(eventCode);
         return ResponseEntity.ok(messages);
     }
 
-    @GetMapping("/event/{eventId}/user/{userId}")
-    public ResponseEntity<List<MessageDTO>> getMessagesByEventIdAndUserId(
-            @PathVariable UUID eventId,
-            @PathVariable UUID userId) {
-        List<MessageDTO> messages = messageService.getMessagesByEventIdAndSenderId(eventId, userId);
+    @GetMapping("/event/{eventCode}/user/{userCode}")
+    public ResponseEntity<List<MessageDTO>> getMessagesByEventCodeAndUserCode(
+            @PathVariable String eventCode,
+            @PathVariable String userCode) {
+        List<MessageDTO> messages = messageService.getMessagesByEventCodeAndUserCode(eventCode, userCode);
         return ResponseEntity.ok(messages);
     }
 
-    @GetMapping("/event/{eventId}/count")
-    public ResponseEntity<Long> getMessageCount(@PathVariable UUID eventId) {
-        Long count = messageService.getMessageCountByEventId(eventId);
+    @GetMapping("/event/{eventCode}/count")
+    public ResponseEntity<Long> getMessageCount(@PathVariable String eventCode) {
+        Long count = messageService.getMessageCountByEventCode(eventCode);
+        return ResponseEntity.ok(count);
+    }
+
+    @GetMapping("/community/{communityCode}")
+    public ResponseEntity<Page<MessageDTO>> getMessagesByCommunityCode(
+            @PathVariable String communityCode,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        Page<MessageDTO> messages = messageService.getMessagesByCommunityCode(communityCode, page, size);
+        return ResponseEntity.ok(messages);
+    }
+
+    @GetMapping("/community/{communityCode}/all")
+    public ResponseEntity<List<MessageDTO>> getAllMessagesByCommunityCode(@PathVariable String communityCode) {
+        List<MessageDTO> messages = messageService.getAllMessagesByCommunityCode(communityCode);
+        return ResponseEntity.ok(messages);
+    }
+
+    @GetMapping("/community/{communityCode}/count")
+    public ResponseEntity<Long> getCommunityMessageCount(@PathVariable String communityCode) {
+        Long count = messageService.getMessageCountByCommunityCode(communityCode);
         return ResponseEntity.ok(count);
     }
 
     @DeleteMapping("/{messageId}")
     public ResponseEntity<Void> deleteMessage(
             @PathVariable UUID messageId,
-            @RequestHeader("X-User-Id") UUID userId) {
+            @RequestHeader("userCode") String userCode) {
         try {
-            messageService.deleteMessage(messageId, userId);
+            messageService.deleteMessage(messageId, userCode);
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();

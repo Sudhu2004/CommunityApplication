@@ -12,8 +12,8 @@ import java.util.UUID;
         uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "community_id"}))
 public class CommunityMembership {
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue
+    @org.hibernate.annotations.UuidGenerator
     private UUID id;
 
     @ManyToOne
@@ -27,6 +27,10 @@ public class CommunityMembership {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MemberRole role;  // OWNER, ADMIN, MEMBER
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private MembershipStatus status = MembershipStatus.ACCEPTED;
 
     @CreationTimestamp
     private LocalDateTime joinedAt;
@@ -64,6 +68,14 @@ public class CommunityMembership {
 
     public void setRole(MemberRole role) {
         this.role = role;
+    }
+
+    public MembershipStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(MembershipStatus status) {
+        this.status = status;
     }
 
     public LocalDateTime getJoinedAt() {

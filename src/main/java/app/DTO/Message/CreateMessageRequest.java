@@ -5,11 +5,13 @@ import app.Database.MessageType;
 import jakarta.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class CreateMessageRequest {
-    @NotNull(message = "Event ID is required")
-    private UUID eventId;
+    private String eventCode;
+
+    private String communityCode;
+
+    private String groupCode;
 
     @NotNull(message = "Message type is required")
     private MessageType type;
@@ -22,12 +24,28 @@ public class CreateMessageRequest {
     }
 
     // Getters and Setters
-    public UUID getEventId() {
-        return eventId;
+    public String getEventCode() {
+        return eventCode;
     }
 
-    public void setEventId(UUID eventId) {
-        this.eventId = eventId;
+    public void setEventCode(String eventCode) {
+        this.eventCode = eventCode;
+    }
+
+    public String getCommunityCode() {
+        return communityCode;
+    }
+
+    public void setCommunityCode(String communityCode) {
+        this.communityCode = communityCode;
+    }
+
+    public String getGroupCode() {
+        return groupCode;
+    }
+
+    public void setGroupCode(String groupCode) {
+        this.groupCode = groupCode;
     }
 
     public MessageType getType() {

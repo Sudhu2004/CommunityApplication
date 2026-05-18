@@ -3,28 +3,27 @@ package app.DTO.Group;
 import app.DTO.User.UserDTO;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public class GroupDTO {
-    private UUID id;
-    private UUID communityId;
+    private String communityCode;
     private String communityName;
     private String name;
     private String description;
+    private Boolean onlyAdminsCanChat;
     private UserDTO createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private int memberCount;
     private int eventCount;
+    private String groupCode;
 
     // Constructors
     public GroupDTO() {}
 
-    public GroupDTO(UUID id, UUID communityId, String communityName, String name,
+    public GroupDTO(String communityCode, String communityName, String name,
                     String description, UserDTO createdBy, LocalDateTime createdAt,
-                    LocalDateTime updatedAt, int memberCount, int eventCount) {
-        this.id = id;
-        this.communityId = communityId;
+                    LocalDateTime updatedAt, int memberCount, int eventCount, String groupCode) {
+        this.communityCode = communityCode;
         this.communityName = communityName;
         this.name = name;
         this.description = description;
@@ -33,14 +32,12 @@ public class GroupDTO {
         this.updatedAt = updatedAt;
         this.memberCount = memberCount;
         this.eventCount = eventCount;
+        this.groupCode = groupCode;
     }
 
     // Getters and Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-
-    public UUID getCommunityId() { return communityId; }
-    public void setCommunityId(UUID communityId) { this.communityId = communityId; }
+    public String getCommunityCode() { return communityCode; }
+    public void setCommunityCode(String communityCode) { this.communityCode = communityCode; }
 
     public String getCommunityName() { return communityName; }
     public void setCommunityName(String communityName) { this.communityName = communityName; }
@@ -50,6 +47,9 @@ public class GroupDTO {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public Boolean getOnlyAdminsCanChat() { return onlyAdminsCanChat; }
+    public void setOnlyAdminsCanChat(Boolean onlyAdminsCanChat) { this.onlyAdminsCanChat = onlyAdminsCanChat; }
 
     public UserDTO getCreatedBy() { return createdBy; }
     public void setCreatedBy(UserDTO createdBy) { this.createdBy = createdBy; }
@@ -65,4 +65,7 @@ public class GroupDTO {
 
     public int getEventCount() { return eventCount; }
     public void setEventCount(int eventCount) { this.eventCount = eventCount; }
+
+    public String getGroupCode() { return groupCode; }
+    public void setGroupCode(String groupCode) { this.groupCode = groupCode; }
 }
