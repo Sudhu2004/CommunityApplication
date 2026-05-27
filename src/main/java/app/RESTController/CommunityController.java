@@ -197,6 +197,11 @@ public class CommunityController {
     public ResponseEntity<List<CommunityMembershipDTO>> getCommunityMembers(
             @PathVariable String communityCode) {
         List<CommunityMembershipDTO> members = communityService.getCommunityMembers(communityCode);
+        System.out.println("Members of Community:");
+
+        for (CommunityMembershipDTO member : members) {
+            System.out.println(member);
+        }
         return ResponseEntity.ok(members);
     }
 

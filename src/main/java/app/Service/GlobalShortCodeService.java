@@ -62,6 +62,12 @@ public class GlobalShortCodeService {
         return globalShortCode.getReferenceId();
     }
 
+    public UUID getUUIDfromShortCode(String code) {
+        GlobalShortCode globalShortCode = globalShortCodeRepository.findByCode(code)
+                .orElseThrow(() -> new RuntimeException("Code not found: " + code));
+        return globalShortCode.getReferenceId();
+    }
+
     private String generateCode() {
         StringBuilder sb = new StringBuilder(CODE_LENGTH);
 

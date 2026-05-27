@@ -16,6 +16,9 @@ public class ActivityController {
     @Autowired
     private ActivityService activityService;
 
+    @Autowired
+    private app.Service.GlobalShortCodeService shortCodeService;
+
     // GET /api/activities?type=USER
     @GetMapping
     public ResponseEntity<List<Activity>> getByType(
@@ -26,15 +29,32 @@ public class ActivityController {
     // GET /api/activities/{referenceId}?type=GROUP
     @GetMapping("/{referenceId}")
     public ResponseEntity<List<Activity>> getByTypeAndReferenceId(
-            @PathVariable UUID referenceId,
+            @PathVariable String referenceId,
             @RequestParam DatabaseType type) {
-        return ResponseEntity.ok(activityService.getActivitiesByTypeAndReferenceId(type, referenceId));
+        
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(referenceId);
+        } catch (IllegalArgumentException e) {
+            // Not a UUID, try to resolve as short code
+            uuid = shortCodeService.getUUIDfromShortCode(type, referenceId);
+        }
+        
+        return ResponseEntity.ok(activityService.getActivitiesByTypeAndReferenceId(type, uuid));
     }
 
     // GET /api/activities/{referenceId}/all
     @GetMapping("/{referenceId}/all")
     public ResponseEntity<List<Activity>> getAllByReferenceId(
-            @PathVariable UUID referenceId) {
-        return ResponseEntity.ok(activityService.getActivitiesByReferenceId(referenceId));
+            @PathVariable String referenceId) {
+        
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(referenceId);
+        } catch (IllegalArgumentException e) {
+            // No type here, so we use the generic one
+            uuid = shortCodeService.getUUIDfromShortCode(referenceId);
+        }
+        return ResponseEntity.ok(activityService.getActivitiesByReferenceId(uuid));
     }
 }

@@ -45,6 +45,9 @@ public class CommunityService {
     @Autowired
     private ActivityService activityService;
 
+    @Autowired
+    private app.Repository.GroupMembershipRepository groupMembershipRepository;
+
     /**
      * Create a new community
      */
@@ -317,12 +320,12 @@ public class CommunityService {
     }
 
     /**
-     * Get all members of a community (ACCEPTED only)
+     * Get all members of a community
      */
     public List<CommunityMembershipDTO> getCommunityMembers(String communityCode) {
         Community community = getCommunityEntityByCode(communityCode);
 
-        List<CommunityMembership> memberships = membershipRepository.findByCommunityIdAndStatus(community.getId(), MembershipStatus.ACCEPTED);
+        List<CommunityMembership> memberships = membershipRepository.findByCommunityId(community.getId());
         return memberships.stream()
                 .map(communityMapper::toMembershipDTO)
                 .collect(Collectors.toList());
@@ -421,6 +424,12 @@ public class CommunityService {
 
         membershipRepository.delete(membership);
         
+        // Cascade removal to all groups in this community
+        List<GroupMembership> groupMemberships = groupMembershipRepository.findByUserIdAndCommunityId(memberUser.getId(), community.getId());
+        for (GroupMembership gm : groupMemberships) {
+            handleGroupMembershipRemoval(gm, community);
+        }
+
         if (membership.getStatus() == MembershipStatus.ACCEPTED) {
             // Activity Message
             activityService.record(
@@ -466,5 +475,61 @@ public class CommunityService {
         return membershipRepository.findByUserIdAndCommunityIdAndStatus(userId, communityId, MembershipStatus.ACCEPTED)
                 .map(m -> m.getRole() == MemberRole.OWNER || m.getRole() == MemberRole.ADMIN)
                 .orElse(false);
+    }
+
+    private void handleGroupMembershipRemoval(GroupMembership gm, Community community) {
+        if (gm.getRole() == MemberRole.OWNER) {
+            List<GroupMembership> otherOwners = groupMembershipRepository.findByGroupIdAndRole(gm.getGroup().getId(), MemberRole.OWNER);
+            if (otherOwners.size() <= 1) {
+                // Last owner - promote someone else or community owner
+                promoteNewGroupOwner(gm.getGroup(), community, gm.getUser());
+            }
+        }
+        groupMembershipRepository.delete(gm);
+    }
+
+    private void promoteNewGroupOwner(Group group, Community community, User leavingUser) {
+        // 1. Try to find a group admin
+        List<GroupMembership> admins = groupMembershipRepository.findByGroupIdAndRole(group.getId(), MemberRole.ADMIN);
+        if (!admins.isEmpty()) {
+            GroupMembership newOwner = admins.get(0);
+            newOwner.setRole(MemberRole.OWNER);
+            groupMembershipRepository.save(newOwner);
+            return;
+        }
+
+        // 2. Try to find any other group member
+        List<GroupMembership> members = groupMembershipRepository.findByGroupIdAndStatus(group.getId(), MembershipStatus.ACCEPTED);
+        for (GroupMembership m : members) {
+            if (!m.getUser().getId().equals(leavingUser.getId())) {
+                m.setRole(MemberRole.OWNER);
+                groupMembershipRepository.save(m);
+                return;
+            }
+        }
+
+        // 3. No one left in group? Transfer to community owner
+        List<CommunityMembership> commOwners = membershipRepository.findByCommunityIdAndRole(community.getId(), MemberRole.OWNER);
+        if (!commOwners.isEmpty()) {
+            User commOwner = commOwners.get(0).getUser();
+            
+            // Check if community owner is already in the group
+            groupMembershipRepository.findByUserIdAndGroupId(commOwner.getId(), group.getId())
+                .ifPresentOrElse(
+                    existingGm -> {
+                        existingGm.setRole(MemberRole.OWNER);
+                        existingGm.setStatus(MembershipStatus.ACCEPTED);
+                        groupMembershipRepository.save(existingGm);
+                    },
+                    () -> {
+                        GroupMembership newMembership = new GroupMembership();
+                        newMembership.setGroup(group);
+                        newMembership.setUser(commOwner);
+                        newMembership.setRole(MemberRole.OWNER);
+                        newMembership.setStatus(MembershipStatus.ACCEPTED);
+                        groupMembershipRepository.save(newMembership);
+                    }
+                );
+        }
     }
 }

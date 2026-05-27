@@ -249,20 +249,25 @@ public class EventService {
         }
 
         User user = userService.getUserByShortCode(request.getUserCode());
-        Group groupTemp = null;
-        if (request.getGroupCode() != null) {
-            UUID groupId = globalShortCodeService.getUUIDfromShortCode(DatabaseType.GROUP, request.getGroupCode());
-            groupTemp = groupRepository.findById(groupId).orElse(null);
-        }
-        final Group group = groupTemp;
+        Group group = null;
 
+        if (request.getType() == DatabaseType.GROUP) {
+            if (request.getGroupCode() == null || request.getGroupCode().isEmpty()) {
+                throw new RuntimeException("Group code is required for group-based attendance");
+            }
+            UUID groupId = globalShortCodeService.getUUIDfromShortCode(DatabaseType.GROUP, request.getGroupCode());
+            group = groupRepository.findById(groupId)
+                    .orElseThrow(() -> new RuntimeException("Group not found"));
+        }
+
+        final Group finalGroup = group;
         EventAttendance attendance = attendanceRepository
-                .findByEventAndUserAndGroup(event, user, group)
+                .findByEventAndUserAndGroup(event, user, finalGroup)
                 .orElseGet(() -> {
                     EventAttendance newAttendance = new EventAttendance();
                     newAttendance.setEvent(event);
                     newAttendance.setUser(user);
-                    newAttendance.setGroup(group);
+                    newAttendance.setGroup(finalGroup);
                     return newAttendance;
                 });
 

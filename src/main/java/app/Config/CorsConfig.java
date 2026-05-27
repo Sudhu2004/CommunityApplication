@@ -18,7 +18,7 @@ public class CorsConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
                         .allowedOrigins("http://localhost:4200")
-                        .allowedMethods("*")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                         .allowedHeaders("*");
             }
         };
@@ -29,7 +29,7 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(List.of("http://localhost:4200")); // your frontend
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 

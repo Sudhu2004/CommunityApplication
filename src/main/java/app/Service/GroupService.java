@@ -369,12 +369,12 @@ public class GroupService {
     }
 
     /**
-     * Get all members of a group (ACCEPTED)
+     * Get all members of a group
      */
     public List<GroupMembershipDTO> getGroupMembers(String groupCode) {
         Group group = getGroupEntityByCode(groupCode);
 
-        List<GroupMembership> memberships = membershipRepository.findByGroupIdAndStatus(group.getId(), MembershipStatus.ACCEPTED);
+        List<GroupMembership> memberships = membershipRepository.findByGroupId(group.getId());
         return memberships.stream()
                 .map(groupMapper::toMembershipDTO)
                 .collect(Collectors.toList());
