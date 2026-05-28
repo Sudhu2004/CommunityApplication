@@ -41,6 +41,8 @@ spring:
     cache: false
 
 app:
+  cors:
+    allowed-origins: http://13.60.34.105,http://localhost:4200
   email:
     from: sudhrshan18@gmail.com
   mail:
