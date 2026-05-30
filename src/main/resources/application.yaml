@@ -1,27 +1,17 @@
-spring:
-  profiles:
-    active: dev
-  datasource:
-    url: jdbc:postgresql://community-app-details.cvay6uoymmq9.ap-south-1.rds.amazonaws.com:5432/postgres
-    username: postgres
-    password: Sudharshan
-    driver-class-name: org.postgresql.Driver
+server:
+  port: ${PORT:8080}
 
+spring:
   jpa:
     hibernate:
-      ddl-auto: ${DDL_AUTO:update}
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         format_sql: true
     database: postgresql
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-
   mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
     protocol: smtp
     properties:
       mail:
@@ -29,9 +19,6 @@ spring:
           auth: true
           starttls:
             enable: true
-          ssl:
-            trust: smtp.gmail.com
-
   thymeleaf:
     prefix: classpath:/templates/
     suffix: .html
@@ -39,12 +26,15 @@ spring:
     encoding: UTF-8
     cache: false
 
-server:
-  port: ${PORT:8080}
-
-app:
-  email:
-    from: ${APP_EMAIL_FROM}
-  mail:
-    mailtrap:
-      token: ${MAILTRAP_TOKEN}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true

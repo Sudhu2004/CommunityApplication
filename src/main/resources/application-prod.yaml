@@ -1,28 +1,26 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/Community
-    username: postgres  # Your Render username
-    password: nani  # Your Render password
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
     driver-class-name: org.postgresql.Driver
-
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${DDL_AUTO:update}
     show-sql: true
     properties:
       hibernate:
         format_sql: true
     database: postgresql
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-
   mail:
-    host: smtp-relay.brevo.com
-    port: 587
-    username: noreply@borough.in
-    password: {BREVO_SMTP_Token}
+    host: ${MAIL_HOST:smtp-relay.brevo.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     protocol: smtp
     properties:
       mail:
@@ -30,9 +28,6 @@ spring:
           auth: true
           starttls:
             enable: true
-          ssl:
-            trust: smtp.gmail.com
-
   thymeleaf:
     prefix: classpath:/templates/
     suffix: .html
@@ -42,23 +37,18 @@ spring:
 
 app:
   cors:
-    allowed-origins: https://borough.in/,http://localhost:4200
+    allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
   email:
-    from: sudhrshan18@gmail.com
-  mail:
-    mailtrap:
-      token: bc4156e080801c12749c199104a8d755
+    from: ${APP_EMAIL_FROM}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
-
   endpoint:
     prometheus:
       enabled: true
-
   metrics:
     export:
       prometheus:
