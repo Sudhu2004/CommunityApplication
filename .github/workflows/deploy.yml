@@ -78,11 +78,11 @@ jobs:
             sudo systemctl restart springboot
             sleep 5
             sudo systemctl is-active springboot && echo "✅ App is running" || echo "❌ App failed"
-  env:
-    DATABASE_URL: ${{ secrets.DATABASE_URL }}
-    DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
-    DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-    MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
-    MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-    APP_EMAIL_FROM: ${{ secrets.APP_EMAIL_FROM }}
-    CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          APP_EMAIL_FROM: ${{ secrets.APP_EMAIL_FROM }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
