@@ -45,27 +45,30 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: DATABASE_URL,DATABASE_USERNAME,DATABASE_PASSWORD,MAIL_USERNAME,MAIL_PASSWORD,APP_EMAIL_FROM,CORS_ORIGINS
           script: |
-            sudo tee /etc/systemd/system/springboot.service > /dev/null << 'EOF'
+            sudo tee /etc/systemd/system/springboot.service > /dev/null << EOF
             [Unit]
             Description=Spring Boot Application
             After=network.target
 
             [Service]
             User=ec2-user
-            Environment="DATABASE_URL=${{ secrets.DATABASE_URL }}"
-            Environment="DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }}"
-            Environment="DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}"
+            Environment="DATABASE_URL=$DATABASE_URL"
+            Environment="DATABASE_USERNAME=$DATABASE_USERNAME"
+            Environment="DATABASE_PASSWORD=$DATABASE_PASSWORD"
             Environment="MAIL_HOST=smtp-relay.brevo.com"
             Environment="MAIL_PORT=587"
-            Environment="MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}"
-            Environment="MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}"
-            Environment="APP_EMAIL_FROM=${{ secrets.APP_EMAIL_FROM }}"
-            Environment="CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}"
-            ExecStart=java -jar /home/ec2-user/Authentication-1.0-SNAPSHOT.jar --spring.profiles.active=prod
+            Environment="MAIL_USERNAME=$MAIL_USERNAME"
+            Environment="MAIL_PASSWORD=$MAIL_PASSWORD"
+            Environment="APP_EMAIL_FROM=$APP_EMAIL_FROM"
+            Environment="CORS_ORIGINS=$CORS_ORIGINS"
+            ExecStart=/usr/bin/java -jar /home/ec2-user/Authentication-1.0-SNAPSHOT.jar --spring.profiles.active=prod
             SuccessExitStatus=143
             Restart=always
             RestartSec=10
+            StandardOutput=append:/home/ec2-user/app.log
+            StandardError=append:/home/ec2-user/app.log
 
             [Install]
             WantedBy=multi-user.target
@@ -75,3 +78,11 @@ jobs:
             sudo systemctl restart springboot
             sleep 5
             sudo systemctl is-active springboot && echo "✅ App is running" || echo "❌ App failed"
+  env:
+    DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+    DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+    MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+    MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+    APP_EMAIL_FROM: ${{ secrets.APP_EMAIL_FROM }}
+    CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
